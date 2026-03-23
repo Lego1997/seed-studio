@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seed Studio</title>
+
+  <!-- Tailwind CSS v4 Play CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Design system tokens -->
+  <style type="text/tailwindcss">
+    @theme {
+      --color-deep: #0F0F14;
+      --color-panel: #1A1A2E;
+      --color-panel-hover: #252542;
+      --color-accent: #6C63FF;
+      --color-accent-hover: #7B73FF;
+      --color-text-primary: #E8E8ED;
+      --color-text-secondary: #8B8B9E;
+      --color-success: #4ADE80;
+      --color-error: #FF6B6B;
+      --color-warning: #FBBF24;
+    }
+  </style>
+
+  <!-- Pre-Tailwind flash prevention + FOUC prevention -->
+  <style>
+    body { background-color: #0F0F14; color: #E8E8ED; }
+    [x-cloak] { display: none !important; }
+
+    /* Spinner animation */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* Subtle scan line texture for cinematic feel */
+    .scan-lines::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* Generate button pulse animation */
+    @keyframes pulse-gen {
+      0%, 100% { background-color: rgba(108, 99, 255, 0.15); }
+      50% { background-color: rgba(108, 99, 255, 0.35); }
+    }
+    .pulse-gen { animation: pulse-gen 1.5s ease-in-out infinite; }
+
+    /* Smooth transitions for status messages */
+    .status-enter {
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Line clamp for history preview */
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+
+  <!-- Alpine.js plugins MUST come before Alpine core -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3/dist/cdn.min.js"></script>
+  <!-- Alpine.js core MUST be last -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body class="bg-deep text-text-primary min-h-screen">
+
+  <!-- ===== APP ROOT ===== -->
+  <div x-data="appRoot()" x-cloak>
+
+    <!-- ===== FIXED HEADER ===== -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-panel/95 backdrop-blur-md border-b border-panel-hover/50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center">
+
+        <!-- Brand with inline status dot -->
+        <div class="flex items-center gap-2.5">
+          <span class="text-base font-semibold tracking-tight text-text-primary">
+            Seed <span class="text-accent">Studio</span>
+          </span>
+          <!-- Inline API status indicator -->
+          <span
+            class="w-2 h-2 rounded-full shrink-0"
+            :class="{
+              'bg-success': $store.config.doubaoStatus === 'valid',
+              'bg-error': $store.config.doubaoStatus === 'invalid' || $store.config.doubaoStatus === 'cors-blocked',
+              'bg-text-secondary/50': $store.config.doubaoStatus === 'unknown',
+              'bg-warning': $store.config.doubaoStatus === 'error' || $store.config.doubaoStatus === 'rate-limited' || $store.config.doubaoStatus === 'network-error',
+              'opacity-60': $store.config.doubaoStatus === 'validating'
+            }"
+            :title="{
+              'valid': 'API connected',
+              'invalid': 'API key invalid',
+              'cors-blocked': 'CORS blocked',
+              'unknown': 'Not configured',
+              'error': 'Error',
+              'rate-limited': 'Rate limited',
+              'network-error': 'Network error',
+              'validating': 'Validating...'
+            }[$store.config.doubaoStatus] || 'Unknown'"
+          ></span>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Header spacer -->
+    <div class="h-14"></div>
+
+    <!-- ===== WORKSPACE ===== -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+      <!-- ===== API CONFIGURATION BLOCK ===== -->
+      <section class="bg-panel rounded-xl border border-panel-hover/60 border-l-2 border-l-accent overflow-hidden">
+        <div class="p-6 space-y-6">
+
+          <!-- Section header -->
+          <div>
+            <h2 class="text-sm font-semibold uppercase tracking-widest text-text-secondary">API Configuration</h2>
+          </div>
+
+          <!-- API key inputs — two columns on desktop -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Left: Doubao API Key -->
+            <div class="space-y-3">
+              <label class="block text-sm font-medium text-text-primary">
+                Doubao API Key <span class="text-error">*</span>
+              </label>
+              <div class="flex flex-col gap-3">
+                <input
+                  type="text"
+                  x-model="doubaoKeyInput"
+                  :placeholder="$store.config.doubaoKey ? maskedKey($store.config.doubaoKey) : 'Enter your Doubao API key...'"
+                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2.5
+                         text-text-primary placeholder-text-secondary/60 text-sm
+                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
+                         transition-colors"
+                  @keydown.enter="testAndSaveDoubao()"
+                >
+                <button
+                  @click="testAndSaveDoubao()"
+                  :disabled="!doubaoKeyInput.trim() || ($store.config?.doubaoStatus ?? 'unknown') === 'validating'"
+                  class="w-full px-5 py-2.5 bg-accent hover:bg-accent-hover rounded-lg
+                         font-medium text-sm transition-all whitespace-nowrap
+                         disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent
+                         shadow-lg shadow-accent/10 hover:shadow-accent/20"
+                  style="color: #fff"
+                >
+                  <template x-if="($store.config?.doubaoStatus ?? 'unknown') === 'validating'">
+                    <span class="flex items-center justify-center gap-2">
+                      <!-- Spinner -->
+                      <svg class="w-4 h-4 spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" opacity="0.3"/>
+                        <path d="M12 2v4"/>
+                      </svg>
+                      Testing...
+                    </span>
+                  </template>
+                  <template x-if="($store.config?.doubaoStatus ?? 'unknown') !== 'validating'">
+                    <span class="flex items-center justify-center gap-2">
+                      <!-- Zap icon -->
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                      </svg>
+                      Test &amp; Save
+                    </span>
+                  </template>
+                </button>
+              </div>
+
+              <!-- Validation status messages -->
+              <div class="min-h-[24px]">
+                <!-- Valid -->
+                <div x-show="$store.config.doubaoStatus === 'valid'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-success">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  API key verified successfully
+                </div>
+
+                <!-- Invalid -->
+                <div x-show="$store.config.doubaoStatus === 'invalid'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-error">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                  <span x-text="$store.config.doubaoError || 'Invalid or expired API key.'"></span>
+                </div>
+
+                <!-- CORS blocked -->
+                <div x-show="$store.config.doubaoStatus === 'cors-blocked'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-start gap-2 text-sm text-warning">
+                  <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span x-text="$store.config.doubaoError || 'Cannot reach Volcengine API from browser. This is typically caused by CORS restrictions.'"></span>
+                </div>
+
+                <!-- Network error -->
+                <div x-show="$store.config.doubaoStatus === 'network-error'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-error">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                    <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+                  </svg>
+                  <span x-text="$store.config.doubaoError || 'Network error. Check your connection.'"></span>
+                </div>
+
+                <!-- Rate limited -->
+                <div x-show="$store.config.doubaoStatus === 'rate-limited'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-warning">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span x-text="$store.config.doubaoError || 'Rate limited. Try again in a moment.'"></span>
+                </div>
+
+                <!-- Generic error -->
+                <div x-show="$store.config.doubaoStatus === 'error'"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-error">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span x-text="$store.config.doubaoError || 'An unexpected error occurred.'"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Seedance 2.0 API Key -->
+            <div class="space-y-3">
+              <label class="block text-sm font-medium text-text-primary">
+                Seedance 2.0 API Key
+                <span class="text-text-secondary text-xs font-normal ml-1">(optional)</span>
+              </label>
+              <div class="flex flex-col gap-3">
+                <input
+                  type="text"
+                  x-model="seedanceKeyInput"
+                  :placeholder="$store.config.seedanceKey ? maskedKey($store.config.seedanceKey) : 'Enter your Seedance 2.0 API key...'"
+                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2.5
+                         text-text-primary placeholder-text-secondary/60 text-sm
+                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
+                         transition-colors"
+                  @keydown.enter="saveSeedanceKey()"
+                >
+                <button
+                  @click="saveSeedanceKey()"
+                  :disabled="!seedanceKeyInput.trim()"
+                  class="w-full px-5 py-2.5 bg-panel-hover hover:bg-panel-hover/80 text-text-primary rounded-lg
+                         font-medium text-sm transition-all whitespace-nowrap border border-panel-hover
+                         disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Save Key
+                </button>
+              </div>
+
+              <!-- Seedance save feedback -->
+              <div class="min-h-[24px]">
+                <div x-show="seedanceSaved"
+                     x-transition:enter="status-enter" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                     class="flex items-center gap-2 text-sm text-success">
+                  <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  Key saved
+                </div>
+              </div>
+
+              <p class="text-xs text-text-secondary/70">
+                Required for direct video generation
+              </p>
+
+              <!-- Custom API Base URL (proxy) -->
+              <div class="mt-4 space-y-2">
+                <label class="block text-xs font-medium text-text-secondary">
+                  Custom API Base URL
+                  <span class="text-text-secondary/50 font-normal ml-1">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  x-model="$store.video.proxyUrl"
+                  placeholder="https://your-proxy.example.com"
+                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2
+                         text-text-primary placeholder-text-secondary/60 text-xs
+                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
+                         transition-colors"
+                >
+                <p class="text-[10px] text-text-secondary/50">
+                  For third-party proxy services (APIYI, etc.) if direct Volcengine API is unavailable overseas
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Registration tips -->
+          <div class="bg-deep/80 rounded-xl p-5 border-l-2 border-accent/60">
+            <h3 class="text-sm font-medium text-text-primary mb-3">Need an API key?</h3>
+            <ol class="text-sm text-text-secondary space-y-2 list-decimal list-inside">
+              <li>
+                Register at
+                <a href="https://console.volcengine.com"
+                   target="_blank"
+                   rel="noopener"
+                   class="text-accent hover:text-accent-hover hover:underline transition-colors">
+                  console.volcengine.com
+                </a>
+              </li>
+              <li>Navigate to Volcano Ark &gt; Model Inference &gt; Create Endpoint</li>
+              <li>Activate a Doubao model and generate an API key</li>
+              <li>New accounts include free trial credits</li>
+            </ol>
+          </div>
+
+          <!-- Clear all data -->
+          <div class="pt-2 border-t border-panel-hover/50">
+            <template x-if="!confirmingClear">
+              <button @click="confirmingClear = true"
+                      class="text-sm text-text-secondary hover:text-error transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+                Clear all saved data
+              </button>
+            </template>
+            <template x-if="confirmingClear">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-error">Are you sure? This cannot be undone.</span>
+                <button @click="clearAllData()"
+                        class="px-3 py-1.5 bg-error/20 text-error text-sm rounded-lg hover:bg-error/30 transition-colors font-medium">
+                  Yes, clear everything
+                </button>
+                <button @click="confirmingClear = false"
+                        class="px-3 py-1.5 text-text-secondary text-sm rounded-lg hover:bg-panel-hover transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </template>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===== WORKSPACE GRID ===== -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Left column -->
+        <div class="space-y-6">
+
+          <!-- Image Upload panel -->
+          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative scan-lines border-l-2 border-l-accent/50">
+            <div class="px-5 pt-5 pb-2">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-medium text-text-primary tracking-wide">Image Upload</h3>
+                <span class="text-xs text-text-secondary" x-show="$store.generation.images.length > 0" x-text="$store.generation.images.length + '/5 images'"></span>
+              </div>
+            </div>
+            <div class="px-5 pb-5">
+              <!-- Drop zone (hidden when at 5 images) -->
+              <div x-show="$store.generation.images.length < $store.generation.maxImages"
+                   @dragover.prevent="isDragging = true"
+                   @dragleave.prevent="isDragging = false"
+                   @drop.prevent="isDragging = false; handleDrop($event)"
+                   @click="$refs.fileInput.click()"
+                   :class="isDragging ? 'border-accent/50 bg-accent/5' : 'border-panel-hover/80'"
+                   class="min-h-[180px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-3 py-8
+                          transition-colors cursor-pointer">
+                <input type="file" x-ref="fileInput" @change="handleFileInput($event)" accept="image/*" multiple class="hidden">
+                <!-- Upload icon -->
+                <div class="w-12 h-12 rounded-xl bg-deep/80 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-text-secondary/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                </div>
+                <div class="text-center">
+                  <p class="text-sm text-text-secondary/80">Drop product images here</p>
+                  <p class="text-xs text-text-secondary/50 mt-1">or click to browse -- up to 5 images</p>
+                </div>
+              </div>
+
+              <!-- Thumbnail grid -->
+              <div x-show="$store.generation.images.length > 0" class="flex flex-wrap gap-2 mt-3">
+                <template x-for="(img, index) in $store.generation.images" :key="img.id">
+                  <div class="relative group">
+                    <img :src="img.preview" :alt="img.name + ' (Image ' + (index+1) + ')'" class="w-20 h-20 object-cover rounded-lg border border-panel-hover/40">
+                    <span class="absolute bottom-0.5 left-0.5 bg-accent/80 text-white text-[10px] font-semibold px-1.5 py-0 rounded-full" x-text="'#' + (index+1)"></span>
+                    <button @click.stop="removeImage(img.id)" :aria-label="'Remove image ' + img.name"
+                            class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-error/80 text-white flex items-center justify-center
+                                   opacity-0 group-hover:opacity-100 transition-opacity duration-150 hover:bg-error text-xs font-bold">&times;</button>
+                    <span class="block w-20 text-[10px] text-text-secondary/50 truncate mt-0.5" x-text="img.name"></span>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Upload error/warning message -->
+              <p x-show="uploadError" x-text="uploadError"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 class="text-xs mt-2"
+                 :class="uploadError.includes('Maximum') ? 'text-warning' : 'text-error'"></p>
+            </div>
+          </div>
+
+          <!-- Product Description panel -->
+          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative scan-lines border-l-2 border-l-success/40">
+            <div class="p-5 space-y-3">
+              <h3 class="text-sm font-medium text-text-primary tracking-wide">Product Description</h3>
+              <textarea
+                x-model="$store.generation.description"
+                placeholder="e.g., Premium wireless earbuds with rose gold finish..."
+                class="w-full bg-deep/80 border border-panel-hover/60 rounded-lg px-4 py-3 min-h-[100px]
+                       text-sm text-text-primary placeholder-text-secondary/50 resize-none
+                       focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/20
+                       transition-colors"
+              ></textarea>
+              <p class="text-[10px] text-text-secondary/40">Optional -- leave empty for vision-only analysis</p>
+
+              <!-- Aspect Ratio selector -->
+              <div class="space-y-2 pt-2">
+                <label class="text-xs font-medium text-text-secondary">Aspect Ratio</label>
+                <div class="flex gap-2" role="radiogroup" aria-label="Aspect ratio">
+                  <!-- 9:16 Vertical -->
+                  <button @click="$store.generation.aspectRatio = '9:16'"
+                          role="radio"
+                          :aria-checked="$store.generation.aspectRatio === '9:16'"
+                          :class="$store.generation.aspectRatio === '9:16'
+                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
+                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                          class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
+                    <div class="w-3 h-5 border border-current rounded-sm"></div>
+                    <span class="text-xs">9:16 Vertical</span>
+                  </button>
+                  <!-- 1:1 Square -->
+                  <button @click="$store.generation.aspectRatio = '1:1'"
+                          role="radio"
+                          :aria-checked="$store.generation.aspectRatio === '1:1'"
+                          :class="$store.generation.aspectRatio === '1:1'
+                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
+                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                          class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
+                    <div class="w-4 h-4 border border-current rounded-sm"></div>
+                    <span class="text-xs">1:1 Square</span>
+                  </button>
+                  <!-- 16:9 Wide -->
+                  <button @click="$store.generation.aspectRatio = '16:9'"
+                          role="radio"
+                          :aria-checked="$store.generation.aspectRatio === '16:9'"
+                          :class="$store.generation.aspectRatio === '16:9'
+                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
+                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                          class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
+                    <div class="w-5 h-3 border border-current rounded-sm"></div>
+                    <span class="text-xs">16:9 Wide</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="space-y-6">
+
+          <!-- Style & Category Presets panel -->
+          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative border-l-2 border-l-warning/40">
+            <div class="p-5 space-y-5">
+
+              <!-- STYLES section -->
+              <div class="space-y-3">
+                <h3 class="text-sm font-medium text-text-primary tracking-wide">Style</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2" role="radiogroup" aria-label="Style">
+                  <template x-for="style in ($store.presets?.allStyles ?? [])" :key="style.id">
+                    <button
+                      @click="$store.presets.selectStyle(style.id)"
+                      role="radio"
+                      :aria-checked="$store.presets.selectedStyle === style.id"
+                      :class="{
+                        'border-accent bg-accent/10 ring-1 ring-accent/30': $store.presets.selectedStyle === style.id,
+                        'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 hover:bg-deep': $store.presets.selectedStyle !== style.id
+                      }"
+                      class="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border
+                             transition-all duration-200 cursor-pointer text-center group"
+                    >
+                      <span
+                        class="text-xs font-medium transition-colors"
+                        :class="$store.presets.selectedStyle === style.id ? 'text-accent' : 'text-text-primary group-hover:text-text-primary'"
+                        x-text="style.name"
+                      ></span>
+                      <span
+                        class="text-[10px] transition-colors"
+                        :class="$store.presets.selectedStyle === style.id ? 'text-accent/60' : 'text-text-secondary/50'"
+                        x-text="style.nameZh"
+                      ></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Divider -->
+              <div class="border-t border-panel-hover/40"></div>
+
+              <!-- CATEGORIES section -->
+              <div class="space-y-3">
+                <h3 class="text-sm font-medium text-text-primary tracking-wide">Category</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" role="radiogroup" aria-label="Category">
+                  <template x-for="cat in ($store.presets?.allCategories ?? [])" :key="cat.id">
+                    <button
+                      @click="$store.presets.selectCategory(cat.id)"
+                      role="radio"
+                      :aria-checked="$store.presets.selectedCategory === cat.id"
+                      :class="{
+                        'border-accent bg-accent/10 ring-1 ring-accent/30': $store.presets.selectedCategory === cat.id,
+                        'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 hover:bg-deep': $store.presets.selectedCategory !== cat.id
+                      }"
+                      class="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border
+                             transition-all duration-200 cursor-pointer text-center group"
+                    >
+                      <span
+                        class="text-xs font-medium transition-colors"
+                        :class="$store.presets.selectedCategory === cat.id ? 'text-accent' : 'text-text-primary group-hover:text-text-primary'"
+                        x-text="cat.name"
+                      ></span>
+                      <span
+                        class="text-[10px] transition-colors"
+                        :class="$store.presets.selectedCategory === cat.id ? 'text-accent/60' : 'text-text-secondary/50'"
+                        x-text="cat.nameZh"
+                      ></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Current selection summary -->
+              <div class="bg-deep/60 rounded-lg p-3 border border-panel-hover/30">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-text-secondary">Selected combination:</span>
+                  <span class="text-xs font-medium text-accent">
+                    <span x-text="$store.presets.currentStyle.name"></span>
+                    <span class="text-text-secondary/40 mx-1">&times;</span>
+                    <span x-text="$store.presets.currentCategory.name"></span>
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Generate button: 3 states -->
+          <!-- Idle + enabled state -->
+          <template x-if="!$store.generation.generating && $store.generation.canGenerate">
+            <button @click="generatePrompt()"
+                    :aria-disabled="false"
+                    class="w-full py-4 bg-accent hover:bg-accent-hover text-white rounded-xl
+                           border border-accent/30 border-l-2 border-l-accent/40
+                           flex flex-col items-center gap-1.5 transition-all
+                           shadow-lg shadow-accent/10 hover:shadow-accent/20">
+              <span class="flex items-center gap-2 text-sm font-medium">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Generate Prompt
+              </span>
+            </button>
+          </template>
+
+          <!-- Idle + disabled state -->
+          <template x-if="!$store.generation.generating && !$store.generation.canGenerate">
+            <button disabled
+                    :aria-disabled="true"
+                    class="w-full py-4 bg-accent/15 text-text-secondary/60 rounded-xl
+                           cursor-not-allowed border border-accent/10 border-l-2 border-l-accent/40
+                           flex flex-col items-center gap-1.5 transition-all">
+              <span class="flex items-center gap-2 text-sm font-medium">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Generate Prompt
+              </span>
+              <span class="text-[11px] text-text-secondary/40"
+                    x-text="$store.config.doubaoStatus !== 'valid' ? 'Configure API key to get started' : 'Upload at least one image to generate'">
+              </span>
+            </button>
+          </template>
+
+          <!-- Generating state (pulsing) -->
+          <template x-if="$store.generation.generating">
+            <button disabled
+                    aria-busy="true"
+                    class="w-full py-4 pulse-gen text-accent rounded-xl
+                           cursor-wait border border-accent/20 border-l-2 border-l-accent/40
+                           flex flex-col items-center gap-1.5">
+              <span class="flex items-center gap-2 text-sm font-medium">
+                <svg class="w-4 h-4 spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" opacity="0.3"/>
+                  <path d="M12 2v4"/>
+                </svg>
+                <span x-text="$store.generation.generationPhase === 'analyzing' ? 'Analyzing images...' : 'Generating prompt...'"></span>
+              </span>
+            </button>
+          </template>
+
+          <!-- Inline error display below Generate button -->
+          <div x-show="$store.generation.error"
+               x-transition:enter="transition ease-out duration-200"
+               x-transition:enter-start="opacity-0"
+               x-transition:enter-end="opacity-100"
+               class="flex items-center gap-2 text-sm text-error mt-2" role="alert">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span x-text="$store.generation.error"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== GENERATED RESULTS ===== -->
+      <div x-show="$store.generation.results.length > 0" class="space-y-4">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-text-secondary">Generated Prompts</h2>
+
+        <template x-for="result in $store.generation.results" :key="result.id">
+          <div class="bg-panel rounded-xl border border-panel-hover/60 border-l-2 border-l-accent/30 overflow-hidden"
+               x-data="{ showGuide: false }"
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="opacity-0 translate-y-2"
+               x-transition:enter-end="opacity-100 translate-y-0">
+
+            <!-- Metadata line -->
+            <div class="px-5 pt-4 pb-2">
+              <span class="text-xs text-text-secondary">
+                <span class="text-accent" x-text="result.metadata.style + ' x ' + result.metadata.category"></span>
+                <span class="mx-1.5">--</span>
+                <span x-text="result.metadata.aspectRatio"></span>
+                <span class="mx-1.5">--</span>
+                <span x-text="result.metadata.imageCount + ' image' + (result.metadata.imageCount > 1 ? 's' : '')"></span>
+                <template x-if="result.fromHistory">
+                  <span class="ml-2 px-1.5 py-0.5 bg-warning/10 text-warning text-[10px] rounded">from history</span>
+                </template>
+              </span>
+            </div>
+
+            <!-- Two-column prompt display -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-0">
+              <div class="md:col-span-3 px-5 py-3 md:border-r md:border-panel-hover/30">
+                <div class="text-sm text-text-primary leading-relaxed" x-html="renderImageBadges(result.chinesePrompt, result.images)"></div>
+              </div>
+              <div class="md:col-span-2 px-5 py-3 border-t md:border-t-0 border-panel-hover/30">
+                <div class="text-sm text-text-secondary leading-relaxed" x-text="result.englishSummary"></div>
+              </div>
+            </div>
+
+            <!-- Image-to-Tag Mapping (only when images available) -->
+            <div x-show="result.images && result.images.length > 0" class="px-5 py-3 border-t border-panel-hover/30">
+              <p class="text-[10px] uppercase tracking-widest text-text-secondary/60 mb-2">Image-to-Tag Mapping</p>
+              <div class="flex flex-wrap gap-3">
+                <template x-for="(img, idx) in result.images" :key="idx">
+                  <div class="flex items-center gap-2 bg-deep/60 rounded-lg px-2.5 py-1.5 border border-panel-hover/30">
+                    <img :src="img.preview" :alt="img.name" class="w-8 h-8 object-cover rounded">
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-accent" x-text="'@图片' + (idx + 1)"></span>
+                      <span class="text-[10px] text-text-secondary/50 max-w-[80px] truncate" x-text="img.name"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <p class="text-[10px] text-text-secondary/40 mt-2">Upload images to Jimeng in this exact order</p>
+            </div>
+
+            <!-- Actions: Copy + Jimeng Guide toggle -->
+            <div class="px-5 py-3 border-t border-panel-hover/30 flex items-center gap-4">
+              <!-- Copy button -->
+              <button @click="copyChinesePrompt(result.id)"
+                      class="flex items-center gap-1.5 text-xs transition-colors"
+                      :class="$store.generation.copiedId === result.id ? 'text-success' : 'text-text-secondary hover:text-accent'">
+                <template x-if="$store.generation.copiedId !== result.id">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </template>
+                <template x-if="$store.generation.copiedId === result.id">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </template>
+                <span x-text="$store.generation.copiedId === result.id ? 'Copied!' : 'Copy Chinese Prompt'"></span>
+              </button>
+
+              <!-- Jimeng guide toggle -->
+              <button @click="showGuide = !showGuide"
+                      class="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span x-text="showGuide ? 'Hide Guide' : 'How to Use in Jimeng'"></span>
+              </button>
+            </div>
+
+            <!-- Jimeng Guide (collapsible) -->
+            <div x-show="showGuide" x-transition class="px-5 pb-5 border-t border-panel-hover/30">
+              <div class="bg-deep/60 rounded-xl p-4 mt-3 space-y-3">
+                <h4 class="text-xs font-semibold uppercase tracking-widest text-accent/80">Paste into Jimeng (即梦)</h4>
+                <ol class="text-xs text-text-secondary space-y-2.5 list-decimal list-inside">
+                  <li>Open <strong class="text-text-primary">jimeng.jianying.com</strong> and log in</li>
+                  <li>Click <strong class="text-text-primary">AI Video</strong> in the sidebar, then select <strong class="text-text-primary">Seedance 2.0</strong></li>
+                  <li>Choose <strong class="text-text-primary">All-Round Reference</strong> (全能参考) mode</li>
+                  <li>Upload your product images <strong class="text-warning">in the same order as shown above</strong> — Jimeng assigns @tags by upload order</li>
+                  <li>Paste the Chinese prompt into the text box (the @图片N tags will link to your uploaded images)</li>
+                  <li>Set aspect ratio to <strong class="text-text-primary" x-text="result.metadata.aspectRatio"></strong>, choose duration, and click <strong class="text-text-primary">Generate</strong></li>
+                </ol>
+                <p class="text-[10px] text-text-secondary/40 pt-1">Jimeng requires a Chinese Douyin account. The interface may vary as Jimeng updates.</p>
+              </div>
+            </div>
+
+            <!-- Direct Video Generation (only when Seedance key exists) -->
+            <template x-if="$store.config.seedanceKey">
+              <div class="border-t border-panel-hover/30">
+
+                <!-- Generate Video button (idle state) -->
+                <div x-show="$store.video.status === 'idle' || $store.video._activeResultId !== result.id" class="px-5 py-3">
+                  <button @click="submitVideo(result.id)"
+                          :disabled="$store.video.status !== 'idle' || result.fromHistory"
+                          class="flex items-center gap-2 text-xs transition-colors"
+                          :class="result.fromHistory ? 'text-text-secondary/30 cursor-not-allowed' : ($store.video.status !== 'idle' ? 'text-text-secondary/40 cursor-not-allowed' : 'text-accent hover:text-accent-hover')">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    <span x-text="result.fromHistory ? 'No images (from history)' : ($store.video.status !== 'idle' ? 'Video generation in progress...' : 'Generate Video via API')"></span>
+                  </button>
+                </div>
+
+                <!-- Video generation progress (active for this result) -->
+                <div x-show="$store.video._activeResultId === result.id && ($store.video.status === 'submitting' || $store.video.status === 'polling')"
+                     x-transition class="px-5 py-4">
+                  <div class="bg-deep/60 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 spinner text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" opacity="0.3"/>
+                          <path d="M12 2v4"/>
+                        </svg>
+                        <span class="text-sm text-accent" x-text="$store.video.progress"></span>
+                      </div>
+                      <span class="text-xs text-text-secondary/40" x-text="$store.video.elapsedSeconds + 's'"></span>
+                    </div>
+                    <div class="w-full bg-panel-hover/50 rounded-full h-1">
+                      <div class="bg-accent/60 h-1 rounded-full transition-all duration-1000"
+                           :style="'width: ' + Math.min($store.video.elapsedSeconds / 180 * 100, 95) + '%'"></div>
+                    </div>
+                    <button @click="cancelVideo()"
+                            class="text-[11px] text-text-secondary/50 hover:text-error transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Video result (completed for this result) -->
+                <div x-show="$store.video._activeResultId === result.id && $store.video.status === 'completed'"
+                     x-transition class="px-5 py-4">
+                  <div class="bg-deep/60 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center gap-2 text-sm text-success">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
+                      Video generated successfully
+                    </div>
+                    <video controls autoplay loop playsinline
+                           class="w-full max-h-[400px] rounded-lg bg-black"
+                           :src="$store.video.videoUrl">
+                    </video>
+                    <div class="flex items-center gap-3">
+                      <a :href="$store.video.videoUrl" download
+                         class="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download Video
+                      </a>
+                      <button @click="resetVideo()"
+                              class="text-[11px] text-text-secondary/50 hover:text-text-primary transition-colors">
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Video error (failed for this result) -->
+                <div x-show="$store.video._activeResultId === result.id && $store.video.status === 'failed'"
+                     x-transition class="px-5 py-3">
+                  <div class="flex items-start gap-2 text-sm text-error">
+                    <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span x-text="$store.video.error"></span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-2">
+                    <button @click="submitVideo(result.id)"
+                            class="text-[11px] text-accent hover:text-accent-hover transition-colors">Retry</button>
+                    <button @click="resetVideo()"
+                            class="text-[11px] text-text-secondary/50 hover:text-text-primary transition-colors">Dismiss</button>
+                  </div>
+                </div>
+
+              </div>
+            </template>
+
+          </div>
+        </template>
+      </div>
+
+      <!-- ===== PROMPT HISTORY ===== -->
+      <div x-show="$store.history.entries.length > 0" class="space-y-4">
+        <div x-data="{ showHistory: false }">
+          <!-- Toggle button -->
+          <button @click="showHistory = !showHistory"
+                  class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-text-secondary hover:text-text-primary transition-colors">
+            <svg class="w-4 h-4 transition-transform" :class="showHistory ? 'rotate-90' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            Prompt History
+            <span class="text-xs font-normal text-text-secondary/50" x-text="'(' + $store.history.entries.length + ')'"></span>
+          </button>
+
+          <!-- History entries -->
+          <div x-show="showHistory" x-transition class="space-y-2 mt-3">
+            <template x-for="entry in $store.history.entries" :key="entry.id">
+              <div class="bg-panel/60 rounded-lg border border-panel-hover/40 p-4 space-y-2">
+                <!-- Header: metadata + timestamp -->
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-text-secondary">
+                    <span class="text-accent/80" x-text="entry.metadata.style + ' x ' + entry.metadata.category"></span>
+                    <span class="mx-1">--</span>
+                    <span x-text="entry.metadata.aspectRatio"></span>
+                  </span>
+                  <span class="text-[10px] text-text-secondary/40" x-text="formatHistoryDate(entry.timestamp)"></span>
+                </div>
+
+                <!-- Description (if any) -->
+                <p x-show="entry.description" class="text-[11px] text-text-secondary/60 italic" x-text="entry.description"></p>
+
+                <!-- Truncated Chinese prompt preview -->
+                <p class="text-xs text-text-primary/80 line-clamp-2" x-text="entry.chinesePrompt"></p>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-3 pt-1">
+                  <button @click="reloadFromHistory(entry.id)"
+                          class="text-[11px] text-accent hover:text-accent-hover transition-colors flex items-center gap-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                    Reload
+                  </button>
+                  <button @click="copyHistoryPrompt(entry.id)"
+                          class="text-[11px] transition-colors flex items-center gap-1"
+                          :class="_historyCopiedId === entry.id ? 'text-success' : 'text-text-secondary hover:text-accent'">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    <span x-text="_historyCopiedId === entry.id ? 'Copied!' : 'Copy'"></span>
+                  </button>
+                  <button @click="deleteHistoryEntry(entry.id)"
+                          class="text-[11px] text-text-secondary/40 hover:text-error transition-colors flex items-center gap-1 ml-auto">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2-2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Clear all history -->
+            <div class="pt-2" x-data="{ confirmClear: false }">
+              <template x-if="!confirmClear">
+                <button @click="confirmClear = true"
+                        class="text-[10px] text-text-secondary/30 hover:text-error/60 transition-colors">
+                  Clear all history
+                </button>
+              </template>
+              <template x-if="confirmClear">
+                <div class="flex items-center gap-3">
+                  <span class="text-[10px] text-error">Clear all history?</span>
+                  <button @click="$store.history.clearAll(); confirmClear = false"
+                          class="px-2 py-1 bg-error/20 text-error text-[10px] rounded-lg hover:bg-error/30 transition-colors font-medium">
+                    Yes, clear
+                  </button>
+                  <button @click="confirmClear = false"
+                          class="px-2 py-1 text-text-secondary text-[10px] rounded-lg hover:bg-panel-hover transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-4">
+      <div class="border-t border-panel-hover/30 pt-4 flex items-center justify-between">
+        <span class="text-xs text-text-secondary/50">Seed Studio v0.1</span>
+        <span class="text-xs text-text-secondary/50">Powered by Doubao &amp; Seedance 2.0</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ===== JAVASCRIPT ===== -->
+  <script>
+    // ===============================================
+    // CORS Error Classification
+    // ===============================================
+    function classifyFetchError(error) {
+      const message = (error && error.message) ? error.message.toLowerCase() : '';
+
+      const isFetchTypeError = (
+        message.includes('failed to fetch') ||     // Chrome/Edge
+        message.includes('load failed') ||          // Safari
+        message.includes('networkerror') ||         // Firefox
+        error.name === 'TypeError'
+      );
+
+      if (!isFetchTypeError) {
+        return { type: 'unknown', message: error.message || 'An unknown error occurred.' };
+      }
+
+      if (!navigator.onLine) {
+        return {
+          type: 'network',
+          message: 'You appear to be offline. Check your internet connection and try again.'
+        };
+      }
+
+      return {
+        type: 'cors-likely',
+        message: 'Cannot reach the Volcengine API from your browser. This is typically caused by CORS (Cross-Origin Resource Sharing) restrictions. You may need to use a CORS proxy or serve this file from a local server.'
+      };
+    }
+
+    // ===============================================
+    // API Key Validation
+    // ===============================================
+    async function validateApiKey(apiKey, baseUrl) {
+      try {
+        const apiBase = baseUrl || 'https://ark.cn-beijing.volces.com';
+        const response = await fetch(apiBase + '/api/v3/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'doubao-1-5-lite-32k',
+            messages: [
+              { role: 'system', content: 'Reply OK' },
+              { role: 'user', content: 'test' }
+            ],
+            max_tokens: 5
+          })
+        });
+
+        if (response.ok) {
+          return { status: 'valid' };
+        }
+
+        if (response.status === 401) {
+          return { status: 'invalid', message: 'Invalid or expired API key.' };
+        }
+        if (response.status === 403) {
+          return { status: 'invalid', message: 'API key lacks permission. Check model access in Volcengine console.' };
+        }
+        if (response.status === 404) {
+          return { status: 'invalid', message: 'Model not found. You may need to activate the Doubao model or use an endpoint ID.' };
+        }
+        if (response.status === 429) {
+          return { status: 'rate-limited', message: 'Rate limited. Try again in a moment.' };
+        }
+
+        return { status: 'error', message: `API returned status ${response.status}` };
+
+      } catch (error) {
+        const classified = classifyFetchError(error);
+        if (classified.type === 'cors-likely') {
+          return { status: 'cors-blocked', message: classified.message };
+        }
+        if (classified.type === 'network') {
+          return { status: 'network-error', message: classified.message };
+        }
+        return { status: 'error', message: classified.message };
+      }
+    }
+
+    // ===============================================
+    // Preset Data Objects
+    // ===============================================
+
+    // Style presets -- define camera, lighting, pacing, and overall aesthetic
+    const STYLE_PRESETS = {
+      cinematic: {
+        id: 'cinematic',
+        name: 'Cinematic',
+        nameZh: '电影感',
+        icon: 'film',
+        camera: 'Slow Dolly推镜 + Crane升降，浅景深，变形宽银幕质感',
+        lighting: '黄金时刻侧逆光，暖琥珀色调，丁达尔光效',
+        pacing: '缓慢优雅，沉稳大气，画面有呼吸感',
+        style: '电影胶片颗粒质感，2.35:1宽银幕构图感',
+        constraints: '禁止出现文字、字幕、水印，保持电影感色调统一'
+      },
+      luxury: {
+        id: 'luxury',
+        name: 'Luxury',
+        nameZh: '奢华高端',
+        icon: 'gem',
+        camera: 'Smooth Orbit环绕展示，缓慢Push In推进细节，固定机位稳定',
+        lighting: '精致侧光勾勒轮廓，柔和渐变背景光，高光反射细腻',
+        pacing: '缓慢优雅，极致精致感，每帧都有高级质感',
+        style: '高端商业摄影质感，深色背景，金属/玻璃质感强化',
+        constraints: '禁止出现文字、字幕、水印，保持画面干净高级'
+      },
+      minimalist: {
+        id: 'minimalist',
+        name: 'Minimalist',
+        nameZh: '极简清新',
+        icon: 'minus-circle',
+        camera: '固定机位或Subtle微妙推镜，平视角度，留白构图',
+        lighting: '高调柔和漫射光，均匀照明，纯净白色调',
+        pacing: '干净利落，节奏平缓，留白充分',
+        style: '极简设计感，低饱和莫兰迪色系，大量留白',
+        constraints: '禁止出现文字、字幕、水印，保持画面极简纯净'
+      },
+      lifestyle: {
+        id: 'lifestyle',
+        name: 'Lifestyle',
+        nameZh: '生活方式',
+        icon: 'heart',
+        camera: '手持镜头轻微晃动，POV主观视角穿插，Tracking跟拍',
+        lighting: '自然室内外光线，不刻意打光，温暖环境光',
+        pacing: '轻松自然，生活化节奏，真实感十足',
+        style: '真人实拍风格，自然色调，轻微运动模糊增加真实感',
+        constraints: '禁止出现文字、字幕、水印，保持自然不造作'
+      },
+      energetic: {
+        id: 'energetic',
+        name: 'Energetic',
+        nameZh: '活力动感',
+        icon: 'zap',
+        camera: 'Fast Tracking快速跟拍，Whip Pan甩镜转场，Dynamic动态角度切换',
+        lighting: '高对比强光，鲜艳饱和色彩，明快光影变化',
+        pacing: '动感十足，节奏紧凑，充满活力和能量',
+        style: '鲜明色彩对比，高饱和度，活力四射的视觉冲击',
+        constraints: '禁止出现文字、字幕、水印，保持画面活力动感'
+      },
+      japanese_ad: {
+        id: 'japanese_ad',
+        name: 'Japanese Ad',
+        nameZh: '日系广告',
+        icon: 'sun',
+        camera: '轻柔Rack Focus焦点转换，Subtle Crane微妙升降，浮动感镜头',
+        lighting: '柔和阴天漫射光，低对比度，日系清新暖光',
+        pacing: '温暖治愈，梦幻朦胧，轻柔舒缓',
+        style: '日系清新治愈风格，柔和粉彩色调，淡雅朦胧感',
+        constraints: '禁止出现文字、字幕、水印，保持日系清新氛围'
+      },
+      tech_futuristic: {
+        id: 'tech_futuristic',
+        name: 'Tech / Futuristic',
+        nameZh: '科技未来',
+        icon: 'cpu',
+        camera: 'Orbit环绕 + Zoom In组合，Aerial航拍俯冲，Cinematic Crane升起',
+        lighting: '霓虹轮廓光，冷蓝调底色搭配高光点缀，体积光穿透',
+        pacing: '科技感拉满，节奏精准，未来感十足',
+        style: '3D渲染科技风，深色背景霓虹点缀，全息UI暗示',
+        constraints: '禁止出现文字、字幕、水印，保持科技未来感统一'
+      }
+    };
+
+    // Category presets -- define subject treatment and composition
+    const CATEGORY_PRESETS = {
+      fashion: {
+        id: 'fashion',
+        name: 'Fashion',
+        nameZh: '时尚服饰',
+        icon: 'shirt',
+        subject: '展示面料质感和垂坠感，强调服饰的剪裁线条和穿着效果',
+        composition: '全身或局部细节交替，关注面料纹理和动态垂感',
+        action: '服饰随动作自然飘动，展示面料的流动性和质感'
+      },
+      electronics: {
+        id: 'electronics',
+        name: 'Electronics',
+        nameZh: '数码电子',
+        icon: 'smartphone',
+        subject: '突出金属/玻璃材质质感，展示产品精密工艺和界面细节',
+        composition: '产品居中360度旋转展示，微距特写材质纹理和接口细节',
+        action: '产品缓慢旋转展示各角度，充电仓开合或屏幕亮起'
+      },
+      food: {
+        id: 'food',
+        name: 'Food & Beverage',
+        nameZh: '美食饮品',
+        icon: 'coffee',
+        subject: '强调食物新鲜感和诱人质感，蒸汽升腾、汤汁流淌、酥脆断面',
+        composition: '俯拍45度或正俯拍，微距特写食材质地和烹饪过程',
+        action: '倒入、切开、撒料、蒸汽升腾等美食动态展示'
+      },
+      cosmetics: {
+        id: 'cosmetics',
+        name: 'Cosmetics',
+        nameZh: '美妆护肤',
+        icon: 'droplet',
+        subject: '展示产品质地和包装精致感，乳液流淌、粉末飘散的细腻质感',
+        composition: '微距产品特写，质地涂抹展示，包装360度展示',
+        action: '产品开盖展示质地，乳液/精华缓缓滴落或涂抹开来'
+      },
+      jewelry: {
+        id: 'jewelry',
+        name: 'Jewelry',
+        nameZh: '珠宝首饰',
+        icon: 'diamond',
+        subject: '捕捉宝石闪光和金属光泽，强调精工细节和重量感',
+        composition: '极致特写切面反光，缓慢环绕展示立体造型',
+        action: '珠宝在光线中缓慢旋转，折射出璀璨光芒'
+      },
+      home: {
+        id: 'home',
+        name: 'Home & Living',
+        nameZh: '家居生活',
+        icon: 'home',
+        subject: '展示产品在家居环境中的温馨感，木质/织物等材质的触感',
+        composition: '产品在生活场景中使用，全景与细节穿插',
+        action: '手触碰产品表面展示质感，在家居场景中自然使用'
+      },
+      toys: {
+        id: 'toys',
+        name: 'Toys & Kids',
+        nameZh: '玩具母婴',
+        icon: 'star',
+        subject: '突出色彩鲜艳和趣味性，材质安全感和玩法创意',
+        composition: '平视或儿童视角，色彩明快的场景布置',
+        action: '玩具组装、弹跳、旋转等充满趣味的动态展示'
+      },
+      automotive: {
+        id: 'automotive',
+        name: 'Automotive',
+        nameZh: '汽车出行',
+        icon: 'car',
+        subject: '展示车身线条和漆面光泽，速度感和环境融合',
+        composition: 'Tracking跟拍行驶画面，航拍俯瞰，车身曲面细节特写',
+        action: '车辆从远处驶来或环绕展示，车灯亮起轮毂旋转'
+      }
+    };
+
+    // ===============================================
+    // System Prompt Builder
+    // ===============================================
+    function buildSystemPrompt(stylePreset, categoryPreset, aspectRatio) {
+      return `你是一个专业的AI视频提示词工程师，为即梦Seedance 2.0平台生成产品推广视频提示词。
+
+## 输出结构
+@图片1中的[产品主体描述]，[动作/展示方式]，[场景/环境]，[运镜]，[光影]，[风格/质感]
+
+## 风格要求：${stylePreset.nameZh}
+- 运镜：${stylePreset.camera}
+- 光影：${stylePreset.lighting}
+- 节奏氛围：${stylePreset.pacing}
+- 视觉风格：${stylePreset.style}
+
+## 品类特征：${categoryPreset.nameZh}
+- 主体处理：${categoryPreset.subject}
+- 构图重点：${categoryPreset.composition}
+- 动作设计：${categoryPreset.action}
+
+## 画面比例
+${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' : '方形1:1'}
+
+## 规则
+1. 仅输出提示词本身，不要解释
+2. 使用中文，运镜术语中英混合（如 Smooth Orbit环绕）
+3. 图片引用使用 @图片1 格式
+4. 总长度控制在30-80个中文字符
+5. 每个镜头只用一个主动词
+6. 末尾加上：禁止出现文字、字幕或水印
+7. 描述要有画面感，具体不抽象`;
+    }
+
+    // ===============================================
+    // Image Preprocessing (Canvas-based, no libraries)
+    // ===============================================
+    async function preprocessImage(file) {
+      const maxSize = 2048;
+      const quality = 0.85;
+      // createImageBitmap handles EXIF orientation automatically
+      const bitmap = await createImageBitmap(file);
+      let { width, height } = bitmap;
+      // Scale down if needed, maintaining aspect ratio
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      // Draw to canvas for re-encoding
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+      // Encode as JPEG
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({
+            base64: reader.result,
+            width: width,
+            height: height
+          });
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', quality);
+      });
+    }
+
+    // ===============================================
+    // Response Parsing
+    // ===============================================
+    function extractContent(response) {
+      if (response.error) {
+        const msg = response.error.message || response.error.status || JSON.stringify(response.error);
+        throw new Error('API error: ' + msg);
+      }
+      if (response.choices && response.choices.length > 0) {
+        const message = response.choices[0].message;
+        if (message && message.content != null) {
+          return message.content;
+        }
+        throw new Error('Model returned empty content (finish_reason: ' + (response.choices[0].finish_reason || 'unknown') + ')');
+      }
+      throw new Error('Cannot parse API response: ' + JSON.stringify(response).slice(0, 200));
+    }
+
+    function parsePromptResponse(content) {
+      const parts = content.split(/ENGLISH:\s*/i);
+      let chinesePrompt = '';
+      let englishSummary = '';
+
+      if (parts.length >= 2) {
+        chinesePrompt = parts[0].replace(/^PROMPT:\s*/i, '').trim();
+        englishSummary = parts[1].trim();
+      } else {
+        // Fallback: entire content is Chinese prompt, no English
+        chinesePrompt = content.replace(/^PROMPT:\s*/i, '').trim();
+        englishSummary = '(English translation not available)';
+      }
+
+      return { chinesePrompt, englishSummary };
+    }
+
+    // ===============================================
+    // @ImageN Badge Rendering
+    // ===============================================
+    function renderImageBadges(promptText, images) {
+      // Escape HTML first to prevent XSS
+      const escaped = promptText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      return escaped.replace(/@图片(\d+)/g, (match, num) => {
+        const idx = parseInt(num, 10) - 1;
+        const imgName = (images && images[idx]) ? images[idx].name : 'Image ' + num;
+        const safeTitle = imgName.replace(/"/g, '&quot;');
+        return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-semibold border border-accent/30" title="' + safeTitle + '">@图片' + num + '</span>';
+      });
+    }
+
+    // ===============================================
+    // Date Formatting for History
+    // ===============================================
+    function formatHistoryDate(isoString) {
+      const d = new Date(isoString);
+      const now = new Date();
+      const diff = now - d;
+
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ===============================================
+    // Prompt Generation Engine
+    // ===============================================
+    async function generatePrompt() {
+      const store = Alpine.store('generation');
+      const config = Alpine.store('config');
+      const presets = Alpine.store('presets');
+
+      // Race condition guard
+      const generationId = Date.now();
+      store._currentGenerationId = generationId;
+
+      store.generating = true;
+      store.generationPhase = 'analyzing';
+      store.error = '';
+
+      try {
+        // Build system prompt from current preset selections
+        const systemPrompt = buildSystemPrompt(
+          presets.currentStyle,
+          presets.currentCategory,
+          store.aspectRatio
+        );
+
+        // Build user message content array: images first, then text
+        const userContent = [];
+
+        store.images.forEach((img) => {
+          userContent.push({
+            type: 'image_url',
+            image_url: { url: img.base64 }
+          });
+        });
+
+        // Build text instruction
+        const imageList = store.images.map((_, i) => '@图片' + (i + 1)).join('、');
+        let textPrompt = '已上传 ' + store.images.length + ' 张产品图片（' + imageList + '）。';
+        if (store.description.trim()) {
+          textPrompt += '\n产品说明：' + store.description.trim();
+        }
+        textPrompt += '\n请分析图片中的产品，生成一段中文 Seedance 2.0 视频推广提示词。';
+        textPrompt += '\n同时提供英文摘要翻译。';
+        textPrompt += '\n\n请按以下格式输出：\n\nPROMPT:\n[中文提示词]\n\nENGLISH:\n[English summary/translation]';
+
+        userContent.push({ type: 'text', text: textPrompt });
+
+        store.generationPhase = 'generating';
+
+        // API call -- CRITICAL: system message content is plain string, NOT array
+        const apiBase = Alpine.store('video').proxyUrl || 'https://ark.cn-beijing.volces.com';
+        const response = await fetch(
+          apiBase + '/api/v3/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + config.doubaoKey
+            },
+            body: JSON.stringify({
+              model: 'doubao-1-5-vision-pro-32k-250115',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userContent }
+              ],
+              max_tokens: 1000,
+              temperature: 0.7
+            })
+          }
+        );
+
+        // Check for stale response (user triggered new generation)
+        if (store._currentGenerationId !== generationId) return;
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            throw new Error('API returned 429. Try again in a moment.');
+          }
+          if (response.status === 401) {
+            throw new Error('API key invalid or expired. Check your Doubao API key.');
+          }
+          const errorBody = await response.text();
+          throw new Error('Generation failed (HTTP ' + response.status + '). ' + (errorBody.slice(0, 100) || 'Please try again.'));
+        }
+
+        const data = await response.json();
+        const content = extractContent(data);
+        const { chinesePrompt, englishSummary } = parsePromptResponse(content);
+
+        if (!chinesePrompt) {
+          throw new Error('Model returned empty content. Try a different description or presets.');
+        }
+
+        // Build result object
+        const result = {
+          id: generationId,
+          chinesePrompt: chinesePrompt,
+          englishSummary: englishSummary,
+          metadata: {
+            style: presets.currentStyle.name,
+            category: presets.currentCategory.name,
+            aspectRatio: store.aspectRatio,
+            imageCount: store.images.length
+          },
+          timestamp: new Date().toISOString(),
+          images: store.images.map(img => ({ preview: img.preview, name: img.name }))
+        };
+
+        // Prepend to results (most recent first)
+        store.results = [result, ...store.results];
+
+        // Auto-save to history (text-only, no base64)
+        Alpine.store('history').addEntry(result);
+
+      } catch (error) {
+        // Check for stale error
+        if (store._currentGenerationId !== generationId) return;
+
+        const classified = classifyFetchError(error);
+        if (classified.type === 'cors-likely') {
+          store.error = 'Cannot reach API. Check your connection or configure a proxy.';
+        } else if (classified.type === 'network') {
+          store.error = classified.message;
+        } else {
+          store.error = error.message || 'Generation failed. Please try again.';
+        }
+      } finally {
+        if (store._currentGenerationId === generationId) {
+          store.generating = false;
+          store.generationPhase = '';
+        }
+      }
+    }
+
+    // ===============================================
+    // Alpine.js Store Registration
+    // ===============================================
+    // Helper: use $persist if available, fall back to plain value
+    function safePersist(defaultValue, key) {
+      try {
+        return Alpine.$persist(defaultValue).as(key);
+      } catch {
+        return defaultValue;
+      }
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('config', {
+        doubaoKey: safePersist('', 'seedStudio_doubaoApiKey'),
+        seedanceKey: safePersist('', 'seedStudio_seedanceApiKey'),
+        doubaoStatus: 'unknown',
+        doubaoError: '',
+
+        init() {
+          // Background validation if key exists
+          if (this.doubaoKey) {
+            this.validateDoubaoKey();
+          }
+        },
+
+        async validateDoubaoKey() {
+          this.doubaoStatus = 'validating';
+          this.doubaoError = '';
+
+          const proxyUrl = Alpine.store('video') && Alpine.store('video').proxyUrl;
+          const result = await validateApiKey(this.doubaoKey, proxyUrl);
+
+          this.doubaoStatus = result.status;
+          this.doubaoError = result.message || '';
+        },
+
+        clearAllData() {
+          // Clear all seedStudio_ prefixed localStorage items
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('seedStudio_')) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+
+          // Also clear Alpine $persist default keys that may exist
+          const alpineKeys = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('_x_')) {
+              alpineKeys.push(key);
+            }
+          }
+          alpineKeys.forEach(key => localStorage.removeItem(key));
+
+          // Reload to reset all state
+          window.location.reload();
+        }
+      });
+
+      Alpine.store('presets', {
+        selectedStyle: safePersist('cinematic', 'seedStudio_selectedStyle'),
+        selectedCategory: safePersist('electronics', 'seedStudio_selectedCategory'),
+
+        get currentStyle() {
+          return STYLE_PRESETS[this.selectedStyle] || STYLE_PRESETS.cinematic;
+        },
+        get currentCategory() {
+          return CATEGORY_PRESETS[this.selectedCategory] || CATEGORY_PRESETS.electronics;
+        },
+        get allStyles() {
+          return Object.values(STYLE_PRESETS);
+        },
+        get allCategories() {
+          return Object.values(CATEGORY_PRESETS);
+        },
+
+        selectStyle(styleId) {
+          if (STYLE_PRESETS[styleId]) {
+            this.selectedStyle = styleId;
+          }
+        },
+        selectCategory(categoryId) {
+          if (CATEGORY_PRESETS[categoryId]) {
+            this.selectedCategory = categoryId;
+          }
+        }
+      });
+
+      Alpine.store('generation', {
+        // Image state (session-only, not persisted)
+        images: [],
+        maxImages: 5,
+
+        // Input state
+        description: safePersist('', 'seedStudio_description'),
+        aspectRatio: safePersist('9:16', 'seedStudio_aspectRatio'),
+
+        // Generation state
+        generating: false,
+        generationPhase: '',  // 'analyzing' | 'generating' | ''
+        error: '',
+
+        // Results (session-only)
+        results: [],
+        copiedId: null,
+
+        // Computed
+        get canGenerate() {
+          return this.images.length > 0
+            && Alpine.store('config').doubaoStatus === 'valid'
+            && !this.generating;
+        }
+      });
+
+      Alpine.store('video', {
+        proxyUrl: safePersist('', 'seedStudio_proxyUrl'),
+        status: 'idle',        // idle | submitting | polling | completed | failed
+        progress: '',
+        elapsedSeconds: 0,
+        videoUrl: null,
+        error: '',
+        _activeResultId: null,
+        _currentTaskId: null,
+        _elapsedTimer: null,
+
+        reset() {
+          if (this._elapsedTimer) clearInterval(this._elapsedTimer);
+          this.status = 'idle';
+          this.progress = '';
+          this.elapsedSeconds = 0;
+          this.videoUrl = null;
+          this.error = '';
+          this._activeResultId = null;
+          this._currentTaskId = null;
+          this._elapsedTimer = null;
+        }
+      });
+
+      Alpine.store('history', {
+        entries: safePersist([], 'seedStudio_history'),
+
+        addEntry(result) {
+          // Strip base64 image data -- text only for localStorage
+          const entry = {
+            id: result.id,
+            timestamp: result.timestamp,
+            chinesePrompt: result.chinesePrompt,
+            englishSummary: result.englishSummary,
+            metadata: result.metadata,
+            description: Alpine.store('generation').description || ''
+          };
+          // Prepend and cap at 50 entries
+          try {
+            this.entries = [entry, ...this.entries.slice(0, 49)];
+          } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+              // Drop to 25 entries and retry
+              this.entries = [entry, ...this.entries.slice(0, 24)];
+            }
+          }
+        },
+
+        removeEntry(id) {
+          this.entries = this.entries.filter(e => e.id !== id);
+        },
+
+        clearAll() {
+          this.entries = [];
+        }
+      });
+    });
+
+    // ===============================================
+    // Video Generation Service (Seedance 2.0)
+    // ===============================================
+    async function submitVideoGeneration(resultId) {
+      const video = Alpine.store('video');
+      const config = Alpine.store('config');
+      const gen = Alpine.store('generation');
+
+      const result = gen.results.find(r => r.id === resultId);
+      if (!result) return;
+
+      // Reset and claim this result
+      video.reset();
+      video._activeResultId = resultId;
+      video.status = 'submitting';
+      video.progress = 'Submitting to Seedance 2.0...';
+
+      // Start elapsed timer
+      video._elapsedTimer = setInterval(() => {
+        video.elapsedSeconds = video.elapsedSeconds + 1;
+      }, 1000);
+
+      const taskGuard = Date.now();
+      video._currentTaskId = taskGuard;
+
+      try {
+        // Build content array: images (with role) + prompt text
+        const content = [];
+        if (result.images && result.images.length > 0) {
+          result.images.forEach(img => {
+            content.push({
+              type: 'image_url',
+              image_url: { url: img.preview },
+              role: 'reference_image'
+            });
+          });
+        }
+        content.push({ type: 'text', text: result.chinesePrompt });
+
+        const baseUrl = video.proxyUrl || 'https://ark.cn-beijing.volces.com';
+        const response = await fetch(baseUrl + '/api/v3/contents/generations/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + config.seedanceKey
+          },
+          body: JSON.stringify({
+            model: 'doubao-seedance-2-0-pro-260215',
+            content: content,
+            duration: 10,
+            resolution: '1080p',
+            ratio: result.metadata.aspectRatio
+          })
+        });
+
+        if (video._currentTaskId !== taskGuard) return;
+
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Seedance API key invalid or expired.');
+          if (response.status === 403) throw new Error('API key lacks video generation permission.');
+          if (response.status === 429) throw new Error('Rate limited. Try again in a moment.');
+          const errBody = await response.text();
+          throw new Error('Submission failed (HTTP ' + response.status + '). ' + (errBody.slice(0, 100) || ''));
+        }
+
+        const data = await response.json();
+        const taskId = data.id;
+        if (!taskId) throw new Error('No task ID in API response.');
+
+        // Start polling
+        video.status = 'polling';
+        video.progress = 'Processing video...';
+
+        let interval = 5000;
+        const maxInterval = 15000;
+        const timeout = 300000; // 5 minutes
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < timeout) {
+          await new Promise(r => setTimeout(r, interval));
+
+          if (video._currentTaskId !== taskGuard) return;
+
+          const statusResponse = await fetch(baseUrl + '/api/v3/contents/generations/tasks/' + taskId, {
+            headers: { 'Authorization': 'Bearer ' + config.seedanceKey }
+          });
+
+          if (video._currentTaskId !== taskGuard) return;
+
+          if (!statusResponse.ok) {
+            throw new Error('Status check failed (HTTP ' + statusResponse.status + ').');
+          }
+
+          const statusData = await statusResponse.json();
+
+          if (statusData.status === 'succeeded') {
+            const videoUrl = (statusData.content && statusData.content.video_url) ||
+                             (statusData.content && statusData.content.file_url) ||
+                             statusData.video_url;
+            if (!videoUrl) throw new Error('Video completed but no URL in response.');
+            video.videoUrl = videoUrl;
+            video.status = 'completed';
+            video.progress = 'Done!';
+            if (video._elapsedTimer) clearInterval(video._elapsedTimer);
+            return;
+          }
+
+          if (statusData.status === 'failed' || statusData.status === 'cancelled' || statusData.status === 'expired') {
+            const errMsg = (statusData.error && statusData.error.message) || statusData.message || 'Video generation ' + statusData.status + '.';
+            throw new Error(errMsg);
+          }
+
+          // Update progress text
+          const elapsed = video.elapsedSeconds;
+          if (elapsed < 30) video.progress = 'Processing video...';
+          else if (elapsed < 90) video.progress = 'Still processing (' + elapsed + 's)...';
+          else video.progress = 'Almost done (' + elapsed + 's)...';
+
+          interval = Math.min(interval * 1.3, maxInterval);
+        }
+
+        throw new Error('Video generation timed out after 5 minutes.');
+
+      } catch (error) {
+        if (video._currentTaskId !== taskGuard) return;
+        const classified = classifyFetchError(error);
+        if (classified.type === 'cors-likely') {
+          video.error = 'Cannot reach Seedance API. Configure a proxy URL in API settings, or check your connection.';
+        } else if (classified.type === 'network') {
+          video.error = classified.message;
+        } else {
+          video.error = error.message || 'Video generation failed.';
+        }
+        video.status = 'failed';
+        if (video._elapsedTimer) clearInterval(video._elapsedTimer);
+      }
+    }
+
+    // ===============================================
+    // App Root Component
+    // ===============================================
+    function appRoot() {
+      return {
+        doubaoKeyInput: '',
+        seedanceKeyInput: '',
+        seedanceSaved: false,
+        _seedanceSavedTimeout: null,
+        confirmingClear: false,
+        isDragging: false,
+        uploadError: '',
+        uploadErrorTimeout: null,
+        _historyCopiedId: null,
+
+        maskedKey(key) {
+          if (!key) return '';
+          if (key.length <= 8) return '\u2022'.repeat(key.length);
+          return '\u2022'.repeat(key.length - 4) + key.slice(-4);
+        },
+
+        async testAndSaveDoubao() {
+          const key = this.doubaoKeyInput.trim();
+          if (!key) return;
+
+          // Save to store (persists via $persist)
+          this.$store.config.doubaoKey = key;
+
+          // Validate
+          await this.$store.config.validateDoubaoKey();
+
+          // If valid, clear input (key is safely stored)
+          if (this.$store.config.doubaoStatus === 'valid') {
+            this.doubaoKeyInput = '';
+          }
+          // If invalid/cors-blocked, keep input so user can edit
+        },
+
+        saveSeedanceKey() {
+          const key = this.seedanceKeyInput.trim();
+          if (!key) return;
+
+          this.$store.config.seedanceKey = key;
+          this.seedanceKeyInput = '';
+          this.seedanceSaved = true;
+
+          // Auto-hide the saved message after 3 seconds
+          if (this._seedanceSavedTimeout) clearTimeout(this._seedanceSavedTimeout);
+          this._seedanceSavedTimeout = setTimeout(() => {
+            this.seedanceSaved = false;
+            this._seedanceSavedTimeout = null;
+          }, 3000);
+        },
+
+        clearAllData() {
+          this.$store.config.clearAllData();
+        },
+
+        async handleDrop(e) {
+          e.preventDefault();
+          this.isDragging = false;
+          const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+          if (files.length === 0) {
+            this.showUploadError('Only image files (JPEG, PNG, WebP) are accepted');
+            return;
+          }
+          await this.processFiles(files);
+        },
+
+        async handleFileInput(e) {
+          const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+          if (files.length === 0) {
+            this.showUploadError('Only image files (JPEG, PNG, WebP) are accepted');
+            e.target.value = '';
+            return;
+          }
+          await this.processFiles(files);
+          e.target.value = '';
+        },
+
+        async processFiles(files) {
+          const store = Alpine.store('generation');
+          const remaining = store.maxImages - store.images.length;
+          if (remaining <= 0) {
+            this.showUploadError('Maximum 5 images reached');
+            return;
+          }
+          const toProcess = files.slice(0, remaining);
+          if (files.length > remaining) {
+            this.showUploadError('Maximum 5 images reached');
+          }
+          for (const file of toProcess) {
+            try {
+              const processed = await preprocessImage(file);
+              store.images = [...store.images, {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                preview: processed.base64,
+                base64: processed.base64,
+                width: processed.width,
+                height: processed.height
+              }];
+            } catch (err) {
+              this.showUploadError('Failed to process ' + file.name + '. Try a different image.');
+              continue;
+            }
+          }
+        },
+
+        removeImage(imageId) {
+          const store = Alpine.store('generation');
+          store.images = store.images.filter(img => img.id !== imageId);
+        },
+
+        showUploadError(msg) {
+          this.uploadError = msg;
+          if (this.uploadErrorTimeout) {
+            clearTimeout(this.uploadErrorTimeout);
+          }
+          this.uploadErrorTimeout = setTimeout(() => {
+            this.uploadError = '';
+            this.uploadErrorTimeout = null;
+          }, 3000);
+        },
+
+        async copyChinesePrompt(resultId) {
+          const store = Alpine.store('generation');
+          const result = store.results.find(r => r.id === resultId);
+          if (!result) return;
+
+          let success = false;
+          try {
+            await navigator.clipboard.writeText(result.chinesePrompt);
+            success = true;
+          } catch {
+            // Fallback for file:// or HTTP contexts
+            try {
+              const ta = document.createElement('textarea');
+              ta.value = result.chinesePrompt;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              success = document.execCommand('copy');
+              document.body.removeChild(ta);
+            } catch { success = false; }
+          }
+
+          if (success) {
+            store.copiedId = resultId;
+            setTimeout(() => {
+              if (store.copiedId === resultId) store.copiedId = null;
+            }, 2000);
+          } else {
+            store.copiedId = null;
+            console.warn('Copy failed. Please select and copy the text manually.');
+          }
+        },
+
+        reloadFromHistory(entryId) {
+          const history = Alpine.store('history');
+          const entry = history.entries.find(e => e.id === entryId);
+          if (!entry) return;
+
+          const store = Alpine.store('generation');
+          // Build a result object from history (no images available)
+          const result = {
+            id: entry.id,
+            chinesePrompt: entry.chinesePrompt,
+            englishSummary: entry.englishSummary,
+            metadata: entry.metadata,
+            timestamp: entry.timestamp,
+            images: [],  // No images in history
+            fromHistory: true
+          };
+          // Remove if already in active results, then prepend
+          store.results = [result, ...store.results.filter(r => r.id !== entry.id)];
+        },
+
+        deleteHistoryEntry(entryId) {
+          Alpine.store('history').removeEntry(entryId);
+        },
+
+        submitVideo(resultId) {
+          submitVideoGeneration(resultId);
+        },
+
+        cancelVideo() {
+          Alpine.store('video').reset();
+        },
+
+        resetVideo() {
+          Alpine.store('video').reset();
+        },
+
+        copyHistoryPrompt(entryId) {
+          const history = Alpine.store('history');
+          const entry = history.entries.find(e => e.id === entryId);
+          if (!entry) return;
+
+          const copyText = async () => {
+            try {
+              await navigator.clipboard.writeText(entry.chinesePrompt);
+              return true;
+            } catch {
+              try {
+                const ta = document.createElement('textarea');
+                ta.value = entry.chinesePrompt;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+              } catch { return false; }
+            }
+          };
+
+          copyText().then(ok => {
+            if (ok) {
+              this._historyCopiedId = entryId;
+              setTimeout(() => {
+                if (this._historyCopiedId === entryId) this._historyCopiedId = null;
+              }, 2000);
+            }
+          });
+        }
+      };
+    }
+  </script>
+</body>
+</html>
