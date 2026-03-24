@@ -294,28 +294,28 @@
               <p class="text-xs text-text-secondary/70">
                 Required for direct video generation
               </p>
-
-              <!-- Custom API Base URL (proxy) -->
-              <div class="mt-4 space-y-2">
-                <label class="block text-xs font-medium text-text-secondary">
-                  Custom API Base URL
-                  <span class="text-text-secondary/50 font-normal ml-1">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  x-model="$store.video.proxyUrl"
-                  placeholder="https://your-proxy.example.com"
-                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2
-                         text-text-primary placeholder-text-secondary/60 text-xs
-                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
-                         transition-colors"
-                >
-                <p class="text-[10px] text-text-secondary/50">
-                  For third-party proxy services (APIYI, etc.) if direct Volcengine API is unavailable overseas
-                </p>
-              </div>
             </div>
 
+          </div>
+
+          <!-- Custom API Base URL — full width, applies to all API calls -->
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-text-secondary">
+              API Base URL
+              <span class="text-text-secondary/50 font-normal ml-1">(optional — defaults to Volcengine)</span>
+            </label>
+            <input
+              type="text"
+              x-model="$store.video.proxyUrl"
+              placeholder="https://ark.cn-beijing.volces.com"
+              class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2
+                     text-text-primary placeholder-text-secondary/60 text-xs
+                     focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
+                     transition-colors"
+            >
+            <p class="text-[10px] text-text-secondary/50">
+              Used for all API calls (Doubao + Seedance). Override with a proxy URL (APIYI, etc.) if Volcengine is unreachable overseas.
+            </p>
           </div>
 
           <!-- Registration tips -->
@@ -979,7 +979,7 @@
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'doubao-1-5-lite-32k',
+            model: 'doubao-seed-2-0-pro',
             messages: [
               { role: 'system', content: 'Reply OK' },
               { role: 'user', content: 'test' }
@@ -1377,7 +1377,7 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
               'Authorization': 'Bearer ' + config.doubaoKey
             },
             body: JSON.stringify({
-              model: 'doubao-1-5-vision-pro-32k-250115',
+              model: 'doubao-seed-2-0-pro',
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userContent }
