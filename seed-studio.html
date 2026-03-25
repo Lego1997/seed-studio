@@ -5,29 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seed Studio</title>
 
+  <!-- Typography: Plus Jakarta Sans (body) + Instrument Serif (brand) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+
   <!-- Tailwind CSS v4 Play CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
   <!-- Design system tokens -->
   <style type="text/tailwindcss">
     @theme {
-      --color-deep: #0F0F14;
-      --color-panel: #1A1A2E;
-      --color-panel-hover: #252542;
-      --color-accent: #6C63FF;
-      --color-accent-hover: #7B73FF;
-      --color-text-primary: #E8E8ED;
-      --color-text-secondary: #8B8B9E;
+      --color-deep: #0A0C10;
+      --color-panel: #12151C;
+      --color-panel-hover: #1A1E28;
+      --color-accent: #D4944A;
+      --color-accent-hover: #E0A55C;
+      --color-text-primary: #E6E4DF;
+      --color-text-secondary: #6C7080;
       --color-success: #4ADE80;
-      --color-error: #FF6B6B;
+      --color-error: #EF6461;
       --color-warning: #FBBF24;
+      --color-surface: #0E1117;
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
     }
   </style>
 
   <!-- Pre-Tailwind flash prevention + FOUC prevention -->
   <style>
-    body { background-color: #0F0F14; color: #E8E8ED; }
+    body {
+      background-color: #0A0C10;
+      color: #E6E4DF;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
     [x-cloak] { display: none !important; }
+
+    /* Brand typography */
+    .font-brand { font-family: 'Instrument Serif', Georgia, serif; }
 
     /* Spinner animation */
     @keyframes spin {
@@ -35,6 +49,19 @@
     }
     .spinner {
       animation: spin 0.8s linear infinite;
+    }
+
+    /* Film grain overlay */
+    .grain::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
     }
 
     /* Subtle scan line texture for cinematic feel */
@@ -46,18 +73,50 @@
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 0, 0, 0.03) 2px,
-        rgba(0, 0, 0, 0.03) 4px
+        rgba(0, 0, 0, 0.025) 2px,
+        rgba(0, 0, 0, 0.025) 4px
       );
       pointer-events: none;
+      border-radius: inherit;
     }
 
     /* Generate button pulse animation */
     @keyframes pulse-gen {
-      0%, 100% { background-color: rgba(108, 99, 255, 0.15); }
-      50% { background-color: rgba(108, 99, 255, 0.35); }
+      0%, 100% { background-color: rgba(212, 148, 74, 0.12); }
+      50% { background-color: rgba(212, 148, 74, 0.28); }
     }
-    .pulse-gen { animation: pulse-gen 1.5s ease-in-out infinite; }
+    .pulse-gen { animation: pulse-gen 1.8s ease-in-out infinite; }
+
+    /* Generate button glow */
+    .btn-glow {
+      background: linear-gradient(135deg, #D4944A 0%, #C07A2E 100%);
+      box-shadow:
+        0 0 20px rgba(212, 148, 74, 0.15),
+        0 4px 16px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-glow:hover {
+      background: linear-gradient(135deg, #E0A55C 0%, #D4944A 100%);
+      box-shadow:
+        0 0 32px rgba(212, 148, 74, 0.25),
+        0 6px 24px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    /* Staggered entrance animations */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
 
     /* Smooth transitions for status messages */
     .status-enter {
@@ -71,6 +130,45 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+
+    /* Card hover lift */
+    .card-hover {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Refined focus ring */
+    input:focus, textarea:focus {
+      border-color: #D4944A !important;
+      box-shadow: 0 0 0 3px rgba(212, 148, 74, 0.1), 0 0 12px rgba(212, 148, 74, 0.06) !important;
+    }
+
+    /* Ambient glow behind header */
+    .header-glow::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, rgba(212, 148, 74, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Preset card active indicator */
+    .preset-active {
+      box-shadow: 0 0 0 1px rgba(212, 148, 74, 0.4), 0 0 12px rgba(212, 148, 74, 0.08);
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0A0C10; }
+    ::-webkit-scrollbar-thumb { background: #1A1E28; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #252B38; }
   </style>
 
   <!-- Alpine.js plugins MUST come before Alpine core -->
@@ -78,18 +176,18 @@
   <!-- Alpine.js core MUST be last -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 </head>
-<body class="bg-deep text-text-primary min-h-screen">
+<body class="bg-deep text-text-primary min-h-screen font-sans grain">
 
   <!-- ===== APP ROOT ===== -->
   <div x-data="appRoot()" x-cloak>
 
     <!-- ===== FIXED HEADER ===== -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-panel/95 backdrop-blur-md border-b border-panel-hover/50">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-panel/90 backdrop-blur-xl border-b border-white/[0.04] header-glow">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center">
 
         <!-- Brand with inline status dot -->
-        <div class="flex items-center gap-2.5">
-          <span class="text-base font-semibold tracking-tight text-text-primary">
+        <div class="flex items-center gap-3">
+          <span class="font-brand text-xl tracking-normal text-text-primary" style="letter-spacing: -0.01em">
             Seed <span class="text-accent">Studio</span>
           </span>
           <!-- Inline API status indicator -->
@@ -122,10 +220,10 @@
     <div class="h-14"></div>
 
     <!-- ===== WORKSPACE ===== -->
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
 
       <!-- ===== API CONFIGURATION BLOCK ===== -->
-      <section class="bg-panel rounded-xl border border-panel-hover/60 border-l-2 border-l-accent overflow-hidden">
+      <section class="bg-panel rounded-2xl border border-white/[0.04] border-l-2 border-l-accent overflow-hidden animate-in card-hover">
         <div class="p-6 space-y-6">
 
           <!-- Section header -->
@@ -143,10 +241,10 @@
               </label>
               <div class="flex flex-col gap-3">
                 <input
-                  type="text"
+                  type="password"
                   x-model="doubaoKeyInput"
                   :placeholder="$store.config.doubaoKey ? maskedKey($store.config.doubaoKey) : 'Enter your Doubao API key...'"
-                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2.5
+                  class="w-full bg-surface border border-white/[0.06] rounded-lg px-4 py-2.5
                          text-text-primary placeholder-text-secondary/60 text-sm
                          focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
                          transition-colors"
@@ -158,7 +256,7 @@
                   class="w-full px-5 py-2.5 bg-accent hover:bg-accent-hover rounded-lg
                          font-medium text-sm transition-all whitespace-nowrap
                          disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent
-                         shadow-lg shadow-accent/10 hover:shadow-accent/20"
+                         shadow-md shadow-accent/10 hover:shadow-accent/15"
                   style="color: #fff"
                 >
                   <template x-if="($store.config?.doubaoStatus ?? 'unknown') === 'validating'">
@@ -181,6 +279,45 @@
                     </span>
                   </template>
                 </button>
+              </div>
+
+              <!-- Billing plan selector -->
+              <div class="flex items-center gap-4 mt-1">
+                <span class="text-xs text-text-secondary">Billing Plan:</span>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="doubao-plan"
+                         value="payg"
+                         :checked="$store.config.doubaoApiPlan === 'payg'"
+                         @change="$store.config.doubaoApiPlan = 'payg'"
+                         class="accent-accent">
+                  <span class="text-xs text-text-primary">Pay-as-you-go</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="doubao-plan"
+                         value="coding"
+                         :checked="$store.config.doubaoApiPlan === 'coding'"
+                         @change="$store.config.doubaoApiPlan = 'coding'"
+                         class="accent-accent">
+                  <span class="text-xs text-text-primary">Coding Plan</span>
+                </label>
+              </div>
+
+              <!-- Custom model/endpoint input — only shown for pay-as-you-go -->
+              <div x-show="$store.config.doubaoApiPlan === 'payg'" x-transition class="mt-2">
+                <label class="block text-xs text-text-secondary mb-1">
+                  Model / Endpoint ID <span class="text-text-secondary/50">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  x-model="$store.config.doubaoCustomModel"
+                  placeholder="e.g. ep-20260301xxxxx or doubao-seed-2-0-pro-260215"
+                  class="w-full bg-surface border border-white/[0.06] rounded-lg px-4 py-2
+                         text-text-primary placeholder-text-secondary/40 text-xs
+                         focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
+                         transition-colors">
+                <p class="text-[10px] text-text-secondary/50 mt-1">
+                  Leave blank for default. Accepts endpoint IDs (ep-xxx) or model names.
+                </p>
               </div>
 
               <!-- Validation status messages -->
@@ -258,10 +395,10 @@
               </label>
               <div class="flex flex-col gap-3">
                 <input
-                  type="text"
+                  type="password"
                   x-model="seedanceKeyInput"
                   :placeholder="$store.config.seedanceKey ? maskedKey($store.config.seedanceKey) : 'Enter your Seedance 2.0 API key...'"
-                  class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2.5
+                  class="w-full bg-surface border border-white/[0.06] rounded-lg px-4 py-2.5
                          text-text-primary placeholder-text-secondary/60 text-sm
                          focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
                          transition-colors"
@@ -308,7 +445,7 @@
               type="text"
               x-model="$store.video.proxyUrl"
               placeholder="https://ark.cn-beijing.volces.com"
-              class="w-full bg-deep border border-panel-hover rounded-lg px-4 py-2
+              class="w-full bg-surface border border-white/[0.06] rounded-lg px-4 py-2
                      text-text-primary placeholder-text-secondary/60 text-xs
                      focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50
                      transition-colors"
@@ -319,26 +456,54 @@
           </div>
 
           <!-- Registration tips -->
-          <div class="bg-deep/80 rounded-xl p-5 border-l-2 border-accent/60">
+          <div class="bg-surface/80 rounded-xl p-5 border-l-2 border-accent/40">
             <h3 class="text-sm font-medium text-text-primary mb-3">Need an API key?</h3>
-            <ol class="text-sm text-text-secondary space-y-2 list-decimal list-inside">
-              <li>
-                Register at
-                <a href="https://console.volcengine.com"
-                   target="_blank"
-                   rel="noopener"
-                   class="text-accent hover:text-accent-hover hover:underline transition-colors">
-                  console.volcengine.com
-                </a>
-              </li>
-              <li>Navigate to Volcano Ark &gt; Model Inference &gt; Create Endpoint</li>
-              <li>Activate a Doubao model and generate an API key</li>
-              <li>New accounts include free trial credits</li>
-            </ol>
+
+            <!-- Recommended: Coding Plan -->
+            <div class="mb-4 transition-opacity duration-200"
+                 :class="$store.config.doubaoApiPlan === 'coding' ? 'opacity-100' : 'opacity-45'">
+              <p class="text-xs font-medium mb-2 transition-colors"
+                 :class="$store.config.doubaoApiPlan === 'coding' ? 'text-accent' : 'text-text-secondary/60'">Recommended: Coding Plan</p>
+              <ol class="text-xs text-text-secondary space-y-1.5 list-decimal list-inside">
+                <li>
+                  Register at
+                  <a href="https://console.volcengine.com"
+                     target="_blank"
+                     rel="noopener"
+                     class="text-accent hover:text-accent-hover hover:underline transition-colors">
+                    console.volcengine.com
+                  </a>
+                </li>
+                <li>Subscribe to <strong>Ark Coding Plan</strong>
+                  (from 9.9 CNY/month, includes doubao-seed-2.0-pro)</li>
+                <li>Go to API Key Management and generate a key</li>
+                <li>Paste the key above -- no model configuration needed</li>
+              </ol>
+              <p class="text-[10px] text-text-secondary/60 mt-1.5">
+                Subscription pricing is much cheaper than per-token billing for regular use.
+              </p>
+            </div>
+
+            <!-- Alternative: Pay-as-you-go -->
+            <div class="transition-opacity duration-200"
+                 :class="$store.config.doubaoApiPlan === 'payg' ? 'opacity-100' : 'opacity-45'">
+              <p class="text-xs font-medium mb-2 transition-colors"
+                 :class="$store.config.doubaoApiPlan === 'payg' ? 'text-accent' : 'text-text-secondary/60'">Alternative: Pay-as-you-go</p>
+              <ol class="text-xs text-text-secondary/70 space-y-1.5 list-decimal list-inside">
+                <li>Register at console.volcengine.com</li>
+                <li>Navigate to Volcano Ark &gt; Model Inference &gt; Create Endpoint</li>
+                <li>Select Doubao-Seed-2.0-Pro, create an inference endpoint</li>
+                <li>Copy the endpoint ID (ep-xxx) into the Model field above</li>
+                <li>Generate an API key and paste above</li>
+              </ol>
+              <p class="text-[10px] text-text-secondary/60 mt-1.5">
+                New accounts include free trial credits. Billed per token.
+              </p>
+            </div>
           </div>
 
           <!-- Clear all data -->
-          <div class="pt-2 border-t border-panel-hover/50">
+          <div class="pt-2 border-t border-white/[0.04]">
             <template x-if="!confirmingClear">
               <button @click="confirmingClear = true"
                       class="text-sm text-text-secondary hover:text-error transition-colors flex items-center gap-2">
@@ -374,7 +539,7 @@
         <div class="space-y-6">
 
           <!-- Image Upload panel -->
-          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative scan-lines border-l-2 border-l-accent/50">
+          <div class="bg-panel rounded-2xl border border-white/[0.04] overflow-hidden relative scan-lines border-l-2 border-l-accent/50 animate-in delay-1 card-hover">
             <div class="px-5 pt-5 pb-2">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-text-primary tracking-wide">Image Upload</h3>
@@ -388,12 +553,12 @@
                    @dragleave.prevent="isDragging = false"
                    @drop.prevent="isDragging = false; handleDrop($event)"
                    @click="$refs.fileInput.click()"
-                   :class="isDragging ? 'border-accent/50 bg-accent/5' : 'border-panel-hover/80'"
-                   class="min-h-[180px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-3 py-8
-                          transition-colors cursor-pointer">
+                   :class="isDragging ? 'border-accent/40 bg-accent/[0.03]' : 'border-white/[0.06]'"
+                   class="min-h-[180px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-8
+                          transition-all duration-300 cursor-pointer hover:border-white/[0.1] hover:bg-white/[0.01]">
                 <input type="file" x-ref="fileInput" @change="handleFileInput($event)" accept="image/*" multiple class="hidden">
                 <!-- Upload icon -->
-                <div class="w-12 h-12 rounded-xl bg-deep/80 flex items-center justify-center">
+                <div class="w-12 h-12 rounded-xl bg-white/[0.03] flex items-center justify-center border border-white/[0.04]">
                   <svg class="w-6 h-6 text-text-secondary/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -410,7 +575,7 @@
               <div x-show="$store.generation.images.length > 0" class="flex flex-wrap gap-2 mt-3">
                 <template x-for="(img, index) in $store.generation.images" :key="img.id">
                   <div class="relative group">
-                    <img :src="img.preview" :alt="img.name + ' (Image ' + (index+1) + ')'" class="w-20 h-20 object-cover rounded-lg border border-panel-hover/40">
+                    <img :src="img.preview" :alt="img.name + ' (Image ' + (index+1) + ')'" class="w-20 h-20 object-cover rounded-lg border border-white/[0.04]">
                     <span class="absolute bottom-0.5 left-0.5 bg-accent/80 text-white text-[10px] font-semibold px-1.5 py-0 rounded-full" x-text="'#' + (index+1)"></span>
                     <button @click.stop="removeImage(img.id)" :aria-label="'Remove image ' + img.name"
                             class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-error/80 text-white flex items-center justify-center
@@ -431,13 +596,13 @@
           </div>
 
           <!-- Product Description panel -->
-          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative scan-lines border-l-2 border-l-success/40">
+          <div class="bg-panel rounded-2xl border border-white/[0.04] overflow-hidden relative scan-lines border-l-2 border-l-success/40 animate-in delay-2 card-hover">
             <div class="p-5 space-y-3">
               <h3 class="text-sm font-medium text-text-primary tracking-wide">Product Description</h3>
               <textarea
                 x-model="$store.generation.description"
                 placeholder="e.g., Premium wireless earbuds with rose gold finish..."
-                class="w-full bg-deep/80 border border-panel-hover/60 rounded-lg px-4 py-3 min-h-[100px]
+                class="w-full bg-surface/80 border border-white/[0.04] rounded-lg px-4 py-3 min-h-[100px]
                        text-sm text-text-primary placeholder-text-secondary/50 resize-none
                        focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/20
                        transition-colors"
@@ -453,8 +618,8 @@
                           role="radio"
                           :aria-checked="$store.generation.aspectRatio === '9:16'"
                           :class="$store.generation.aspectRatio === '9:16'
-                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
-                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                            ? 'border-accent/50 bg-accent/[0.08] ring-1 ring-accent/20 preset-active text-accent'
+                            : 'border-white/[0.04] bg-surface/60 hover:border-text-secondary/30 text-text-secondary'"
                           class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
                     <div class="w-3 h-5 border border-current rounded-sm"></div>
                     <span class="text-xs">9:16 Vertical</span>
@@ -464,8 +629,8 @@
                           role="radio"
                           :aria-checked="$store.generation.aspectRatio === '1:1'"
                           :class="$store.generation.aspectRatio === '1:1'
-                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
-                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                            ? 'border-accent/50 bg-accent/[0.08] ring-1 ring-accent/20 preset-active text-accent'
+                            : 'border-white/[0.04] bg-surface/60 hover:border-text-secondary/30 text-text-secondary'"
                           class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
                     <div class="w-4 h-4 border border-current rounded-sm"></div>
                     <span class="text-xs">1:1 Square</span>
@@ -475,8 +640,8 @@
                           role="radio"
                           :aria-checked="$store.generation.aspectRatio === '16:9'"
                           :class="$store.generation.aspectRatio === '16:9'
-                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30 text-accent'
-                            : 'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 text-text-secondary'"
+                            ? 'border-accent/50 bg-accent/[0.08] ring-1 ring-accent/20 preset-active text-accent'
+                            : 'border-white/[0.04] bg-surface/60 hover:border-text-secondary/30 text-text-secondary'"
                           class="flex items-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-200 cursor-pointer">
                     <div class="w-5 h-3 border border-current rounded-sm"></div>
                     <span class="text-xs">16:9 Wide</span>
@@ -491,7 +656,7 @@
         <div class="space-y-6">
 
           <!-- Style & Category Presets panel -->
-          <div class="bg-panel rounded-xl border border-panel-hover/60 overflow-hidden relative border-l-2 border-l-warning/40">
+          <div class="bg-panel rounded-2xl border border-white/[0.04] overflow-hidden relative border-l-2 border-l-warning/40 animate-in delay-3 card-hover">
             <div class="p-5 space-y-5">
 
               <!-- STYLES section -->
@@ -504,8 +669,8 @@
                       role="radio"
                       :aria-checked="$store.presets.selectedStyle === style.id"
                       :class="{
-                        'border-accent bg-accent/10 ring-1 ring-accent/30': $store.presets.selectedStyle === style.id,
-                        'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 hover:bg-deep': $store.presets.selectedStyle !== style.id
+                        'border-accent/50 bg-accent/[0.08] ring-1 ring-accent/20 preset-active': $store.presets.selectedStyle === style.id,
+                        'border-white/[0.04] bg-surface/60 hover:border-white/[0.08] hover:bg-white/[0.02]': $store.presets.selectedStyle !== style.id
                       }"
                       class="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border
                              transition-all duration-200 cursor-pointer text-center group"
@@ -526,7 +691,7 @@
               </div>
 
               <!-- Divider -->
-              <div class="border-t border-panel-hover/40"></div>
+              <div class="border-t border-white/[0.04]"></div>
 
               <!-- CATEGORIES section -->
               <div class="space-y-3">
@@ -538,8 +703,8 @@
                       role="radio"
                       :aria-checked="$store.presets.selectedCategory === cat.id"
                       :class="{
-                        'border-accent bg-accent/10 ring-1 ring-accent/30': $store.presets.selectedCategory === cat.id,
-                        'border-panel-hover/60 bg-deep/60 hover:border-text-secondary/30 hover:bg-deep': $store.presets.selectedCategory !== cat.id
+                        'border-accent/50 bg-accent/[0.08] ring-1 ring-accent/20 preset-active': $store.presets.selectedCategory === cat.id,
+                        'border-white/[0.04] bg-surface/60 hover:border-white/[0.08] hover:bg-white/[0.02]': $store.presets.selectedCategory !== cat.id
                       }"
                       class="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border
                              transition-all duration-200 cursor-pointer text-center group"
@@ -560,7 +725,7 @@
               </div>
 
               <!-- Current selection summary -->
-              <div class="bg-deep/60 rounded-lg p-3 border border-panel-hover/30">
+              <div class="bg-surface/60 rounded-lg p-3 border border-white/[0.04]">
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-text-secondary">Selected combination:</span>
                   <span class="text-xs font-medium text-accent">
@@ -579,10 +744,10 @@
           <template x-if="!$store.generation.generating && $store.generation.canGenerate">
             <button @click="generatePrompt()"
                     :aria-disabled="false"
-                    class="w-full py-4 bg-accent hover:bg-accent-hover text-white rounded-xl
-                           border border-accent/30 border-l-2 border-l-accent/40
-                           flex flex-col items-center gap-1.5 transition-all
-                           shadow-lg shadow-accent/10 hover:shadow-accent/20">
+                    class="w-full py-4 btn-glow text-white rounded-2xl
+                           border border-accent/20
+                           flex flex-col items-center gap-1.5
+                           animate-in delay-4">
               <span class="flex items-center gap-2 text-sm font-medium">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="5 3 19 12 5 21 5 3"/>
@@ -596,9 +761,10 @@
           <template x-if="!$store.generation.generating && !$store.generation.canGenerate">
             <button disabled
                     :aria-disabled="true"
-                    class="w-full py-4 bg-accent/15 text-text-secondary/60 rounded-xl
-                           cursor-not-allowed border border-accent/10 border-l-2 border-l-accent/40
-                           flex flex-col items-center gap-1.5 transition-all">
+                    class="w-full py-4 bg-panel-hover/60 text-text-secondary/50 rounded-2xl
+                           cursor-not-allowed border border-white/[0.03]
+                           flex flex-col items-center gap-1.5 transition-all
+                           animate-in delay-4">
               <span class="flex items-center gap-2 text-sm font-medium">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="5 3 19 12 5 21 5 3"/>
@@ -615,8 +781,8 @@
           <template x-if="$store.generation.generating">
             <button disabled
                     aria-busy="true"
-                    class="w-full py-4 pulse-gen text-accent rounded-xl
-                           cursor-wait border border-accent/20 border-l-2 border-l-accent/40
+                    class="w-full py-4 pulse-gen text-accent rounded-2xl
+                           cursor-wait border border-accent/15
                            flex flex-col items-center gap-1.5">
               <span class="flex items-center gap-2 text-sm font-medium">
                 <svg class="w-4 h-4 spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -647,7 +813,7 @@
         <h2 class="text-sm font-semibold uppercase tracking-widest text-text-secondary">Generated Prompts</h2>
 
         <template x-for="result in $store.generation.results" :key="result.id">
-          <div class="bg-panel rounded-xl border border-panel-hover/60 border-l-2 border-l-accent/30 overflow-hidden"
+          <div class="bg-panel rounded-2xl border border-white/[0.04] border-l-2 border-l-accent/30 overflow-hidden"
                x-data="{ showGuide: false }"
                x-transition:enter="transition ease-out duration-300"
                x-transition:enter-start="opacity-0 translate-y-2"
@@ -669,20 +835,20 @@
 
             <!-- Two-column prompt display -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-0">
-              <div class="md:col-span-3 px-5 py-3 md:border-r md:border-panel-hover/30">
+              <div class="md:col-span-3 px-5 py-3 md:border-r md:border-white/[0.04]">
                 <div class="text-sm text-text-primary leading-relaxed" x-html="renderImageBadges(result.chinesePrompt, result.images)"></div>
               </div>
-              <div class="md:col-span-2 px-5 py-3 border-t md:border-t-0 border-panel-hover/30">
+              <div class="md:col-span-2 px-5 py-3 border-t md:border-t-0 border-white/[0.04]">
                 <div class="text-sm text-text-secondary leading-relaxed" x-text="result.englishSummary"></div>
               </div>
             </div>
 
             <!-- Image-to-Tag Mapping (only when images available) -->
-            <div x-show="result.images && result.images.length > 0" class="px-5 py-3 border-t border-panel-hover/30">
+            <div x-show="result.images && result.images.length > 0" class="px-5 py-3 border-t border-white/[0.04]">
               <p class="text-[10px] uppercase tracking-widest text-text-secondary/60 mb-2">Image-to-Tag Mapping</p>
               <div class="flex flex-wrap gap-3">
                 <template x-for="(img, idx) in result.images" :key="idx">
-                  <div class="flex items-center gap-2 bg-deep/60 rounded-lg px-2.5 py-1.5 border border-panel-hover/30">
+                  <div class="flex items-center gap-2 bg-surface/60 rounded-lg px-2.5 py-1.5 border border-white/[0.04]">
                     <img :src="img.preview" :alt="img.name" class="w-8 h-8 object-cover rounded">
                     <div class="flex flex-col">
                       <span class="text-xs font-semibold text-accent" x-text="'@图片' + (idx + 1)"></span>
@@ -695,7 +861,7 @@
             </div>
 
             <!-- Actions: Copy + Jimeng Guide toggle -->
-            <div class="px-5 py-3 border-t border-panel-hover/30 flex items-center gap-4">
+            <div class="px-5 py-3 border-t border-white/[0.04] flex items-center gap-4">
               <!-- Copy button -->
               <button @click="copyChinesePrompt(result.id)"
                       class="flex items-center gap-1.5 text-xs transition-colors"
@@ -724,8 +890,8 @@
             </div>
 
             <!-- Jimeng Guide (collapsible) -->
-            <div x-show="showGuide" x-transition class="px-5 pb-5 border-t border-panel-hover/30">
-              <div class="bg-deep/60 rounded-xl p-4 mt-3 space-y-3">
+            <div x-show="showGuide" x-transition class="px-5 pb-5 border-t border-white/[0.04]">
+              <div class="bg-surface/60 rounded-xl p-4 mt-3 space-y-3">
                 <h4 class="text-xs font-semibold uppercase tracking-widest text-accent/80">Paste into Jimeng (即梦)</h4>
                 <ol class="text-xs text-text-secondary space-y-2.5 list-decimal list-inside">
                   <li>Open <strong class="text-text-primary">jimeng.jianying.com</strong> and log in</li>
@@ -741,7 +907,7 @@
 
             <!-- Direct Video Generation (only when Seedance key exists) -->
             <template x-if="$store.config.seedanceKey">
-              <div class="border-t border-panel-hover/30">
+              <div class="border-t border-white/[0.04]">
 
                 <!-- Generate Video button (idle state) -->
                 <div x-show="$store.video.status === 'idle' || $store.video._activeResultId !== result.id" class="px-5 py-3">
@@ -759,7 +925,7 @@
                 <!-- Video generation progress (active for this result) -->
                 <div x-show="$store.video._activeResultId === result.id && ($store.video.status === 'submitting' || $store.video.status === 'polling')"
                      x-transition class="px-5 py-4">
-                  <div class="bg-deep/60 rounded-xl p-4 space-y-3">
+                  <div class="bg-surface/60 rounded-xl p-4 space-y-3">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 spinner text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -784,7 +950,7 @@
                 <!-- Video result (completed for this result) -->
                 <div x-show="$store.video._activeResultId === result.id && $store.video.status === 'completed'"
                      x-transition class="px-5 py-4">
-                  <div class="bg-deep/60 rounded-xl p-4 space-y-3">
+                  <div class="bg-surface/60 rounded-xl p-4 space-y-3">
                     <div class="flex items-center gap-2 text-sm text-success">
                       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
@@ -851,7 +1017,7 @@
           <!-- History entries -->
           <div x-show="showHistory" x-transition class="space-y-2 mt-3">
             <template x-for="entry in $store.history.entries" :key="entry.id">
-              <div class="bg-panel/60 rounded-lg border border-panel-hover/40 p-4 space-y-2">
+              <div class="bg-panel/60 rounded-lg border border-white/[0.04] p-4 space-y-2">
                 <!-- Header: metadata + timestamp -->
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-text-secondary">
@@ -925,10 +1091,10 @@
     </main>
 
     <!-- ===== FOOTER ===== -->
-    <footer class="max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-4">
-      <div class="border-t border-panel-hover/30 pt-4 flex items-center justify-between">
-        <span class="text-xs text-text-secondary/50">Seed Studio v0.1</span>
-        <span class="text-xs text-text-secondary/50">Powered by Doubao &amp; Seedance 2.0</span>
+    <footer class="max-w-6xl mx-auto px-4 sm:px-6 pb-10 pt-6">
+      <div class="border-t border-white/[0.04] pt-5 flex items-center justify-between">
+        <span class="text-[11px] text-text-secondary/40 tracking-wide">Seed Studio v0.1</span>
+        <span class="text-[11px] text-text-secondary/40 tracking-wide">Powered by Doubao &amp; Seedance 2.0</span>
       </div>
     </footer>
 
@@ -939,7 +1105,7 @@
     // ===============================================
     // CORS Error Classification
     // ===============================================
-    function classifyFetchError(error) {
+    function classifyFetchError(error, requestUrl) {
       const message = (error && error.message) ? error.message.toLowerCase() : '';
 
       const isFetchTypeError = (
@@ -960,6 +1126,17 @@
         };
       }
 
+      if (requestUrl) {
+        try {
+          new URL(requestUrl);
+        } catch {
+          return {
+            type: 'invalid-url',
+            message: 'API Base URL is invalid. Enter a full URL such as https://ark.cn-beijing.volces.com.'
+          };
+        }
+      }
+
       return {
         type: 'cors-likely',
         message: 'Cannot reach the Volcengine API from your browser. This is typically caused by CORS (Cross-Origin Resource Sharing) restrictions. You may need to use a CORS proxy or serve this file from a local server.'
@@ -967,19 +1144,43 @@
     }
 
     // ===============================================
+    // API URL & Model Helpers (plan-aware routing)
+    // ===============================================
+    function getDoubaoApiUrl(baseUrl, plan) {
+      const base = baseUrl || 'https://ark.cn-beijing.volces.com';
+      const pathPrefix = plan === 'coding' ? '/api/coding/v3' : '/api/v3';
+      return base + pathPrefix + '/chat/completions';
+    }
+
+    function getSeedanceApiUrl(baseUrl, action, taskId) {
+      const base = baseUrl || 'https://ark.cn-beijing.volces.com';
+      if (action === 'poll') return base + '/api/v3/contents/generations/tasks/' + taskId;
+      return base + '/api/v3/contents/generations/tasks';
+    }
+
+    function getDoubaoModelName(plan, customModel) {
+      // Custom model/endpoint only applies to pay-as-you-go
+      if (plan === 'payg' && customModel && customModel.trim()) {
+        return customModel.trim();
+      }
+      // Plan defaults
+      return plan === 'coding' ? 'doubao-seed-2.0-pro' : 'doubao-seed-2-0-pro';
+    }
+
+    // ===============================================
     // API Key Validation
     // ===============================================
-    async function validateApiKey(apiKey, baseUrl) {
+    async function validateApiKey(apiKey, baseUrl, plan, customModel) {
+      const url = getDoubaoApiUrl(baseUrl, plan);
       try {
-        const apiBase = baseUrl || 'https://ark.cn-beijing.volces.com';
-        const response = await fetch(apiBase + '/api/v3/chat/completions', {
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'doubao-seed-2-0-pro',
+            model: getDoubaoModelName(plan, customModel),
             messages: [
               { role: 'system', content: 'Reply OK' },
               { role: 'user', content: 'test' }
@@ -1008,7 +1209,7 @@
         return { status: 'error', message: `API returned status ${response.status}` };
 
       } catch (error) {
-        const classified = classifyFetchError(error);
+        const classified = classifyFetchError(error, url);
         if (classified.type === 'cors-likely') {
           return { status: 'cors-blocked', message: classified.message };
         }
@@ -1298,7 +1499,7 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
         const idx = parseInt(num, 10) - 1;
         const imgName = (images && images[idx]) ? images[idx].name : 'Image ' + num;
         const safeTitle = imgName.replace(/"/g, '&quot;');
-        return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-semibold border border-accent/30" title="' + safeTitle + '">@图片' + num + '</span>';
+        return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20" title="' + safeTitle + '">@图片' + num + '</span>';
       });
     }
 
@@ -1367,9 +1568,11 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
         store.generationPhase = 'generating';
 
         // API call -- CRITICAL: system message content is plain string, NOT array
-        const apiBase = Alpine.store('video').proxyUrl || 'https://ark.cn-beijing.volces.com';
+        const plan = Alpine.store('config').doubaoApiPlan;
+        const customModel = Alpine.store('config').doubaoCustomModel;
+        const apiUrl = getDoubaoApiUrl(Alpine.store('video').proxyUrl, plan);
         const response = await fetch(
-          apiBase + '/api/v3/chat/completions',
+          apiUrl,
           {
             method: 'POST',
             headers: {
@@ -1377,7 +1580,7 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
               'Authorization': 'Bearer ' + config.doubaoKey
             },
             body: JSON.stringify({
-              model: 'doubao-seed-2-0-pro',
+              model: getDoubaoModelName(plan, customModel),
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userContent }
@@ -1435,9 +1638,13 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
         // Check for stale error
         if (store._currentGenerationId !== generationId) return;
 
-        const classified = classifyFetchError(error);
+        const plan = Alpine.store('config').doubaoApiPlan;
+        const apiUrl = getDoubaoApiUrl(Alpine.store('video').proxyUrl, plan);
+        const classified = classifyFetchError(error, apiUrl);
         if (classified.type === 'cors-likely') {
           store.error = 'Cannot reach API. Check your connection or configure a proxy.';
+        } else if (classified.type === 'invalid-url') {
+          store.error = classified.message;
         } else if (classified.type === 'network') {
           store.error = classified.message;
         } else {
@@ -1466,23 +1673,53 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
     document.addEventListener('alpine:init', () => {
       Alpine.store('config', {
         doubaoKey: safePersist('', 'seedStudio_doubaoApiKey'),
+        doubaoApiPlan: safePersist('coding', 'seedStudio_doubaoApiPlan'),
+        doubaoCustomModel: safePersist('', 'seedStudio_doubaoCustomModel'),
         seedanceKey: safePersist('', 'seedStudio_seedanceApiKey'),
         doubaoStatus: 'unknown',
         doubaoError: '',
+        _validationVersion: 0,
+        _validationDebounceTimer: null,
 
         init() {
           // Background validation if key exists
           if (this.doubaoKey) {
             this.validateDoubaoKey();
           }
+
+          // Watch for plan changes and re-validate
+          const self = this;
+          Alpine.effect(() => {
+            const _plan = self.doubaoApiPlan; // track dependency
+            const _model = self.doubaoCustomModel; // track custom model changes
+            // Read key/status via Alpine.raw() to avoid tracking them as dependencies.
+            // Without this, writing doubaoStatus in validateDoubaoKey() re-triggers
+            // the effect, creating an infinite validation loop.
+            const raw = Alpine.raw(self);
+            if (raw._validationDebounceTimer) {
+              clearTimeout(raw._validationDebounceTimer);
+              raw._validationDebounceTimer = null;
+            }
+            if (raw.doubaoKey && raw.doubaoStatus !== 'unknown') {
+              raw._validationDebounceTimer = setTimeout(() => {
+                raw._validationDebounceTimer = null;
+                self.validateDoubaoKey();
+              }, 500);
+            }
+          });
         },
 
         async validateDoubaoKey() {
+          const validationVersion = ++this._validationVersion;
           this.doubaoStatus = 'validating';
           this.doubaoError = '';
 
           const proxyUrl = Alpine.store('video') && Alpine.store('video').proxyUrl;
-          const result = await validateApiKey(this.doubaoKey, proxyUrl);
+          const result = await validateApiKey(this.doubaoKey, proxyUrl, this.doubaoApiPlan, this.doubaoCustomModel);
+
+          if (validationVersion !== this._validationVersion) {
+            return;
+          }
 
           this.doubaoStatus = result.status;
           this.doubaoError = result.message || '';
@@ -1498,16 +1735,6 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
             }
           }
           keysToRemove.forEach(key => localStorage.removeItem(key));
-
-          // Also clear Alpine $persist default keys that may exist
-          const alpineKeys = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('_x_')) {
-              alpineKeys.push(key);
-            }
-          }
-          alpineKeys.forEach(key => localStorage.removeItem(key));
 
           // Reload to reset all state
           window.location.reload();
@@ -1579,6 +1806,22 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
         _activeResultId: null,
         _currentTaskId: null,
         _elapsedTimer: null,
+        _lastProxyUrl: null,
+
+        init() {
+          this._lastProxyUrl = this.proxyUrl;
+          const self = this;
+          Alpine.effect(() => {
+            const currentProxyUrl = self.proxyUrl;
+            const raw = Alpine.raw(self);
+            if (raw._lastProxyUrl !== currentProxyUrl) {
+              raw._lastProxyUrl = currentProxyUrl;
+              const config = Alpine.store('config');
+              config.doubaoStatus = 'unknown';
+              config.doubaoError = '';
+            }
+          });
+        },
 
         reset() {
           if (this._elapsedTimer) clearInterval(this._elapsedTimer);
@@ -1666,8 +1909,8 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
         }
         content.push({ type: 'text', text: result.chinesePrompt });
 
-        const baseUrl = video.proxyUrl || 'https://ark.cn-beijing.volces.com';
-        const response = await fetch(baseUrl + '/api/v3/contents/generations/tasks', {
+        const submitUrl = getSeedanceApiUrl(video.proxyUrl, 'submit');
+        const response = await fetch(submitUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1710,7 +1953,7 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
 
           if (video._currentTaskId !== taskGuard) return;
 
-          const statusResponse = await fetch(baseUrl + '/api/v3/contents/generations/tasks/' + taskId, {
+          const statusResponse = await fetch(getSeedanceApiUrl(video.proxyUrl, 'poll', taskId), {
             headers: { 'Authorization': 'Bearer ' + config.seedanceKey }
           });
 
@@ -1752,9 +1995,12 @@ ${aspectRatio === '16:9' ? '横屏16:9' : aspectRatio === '9:16' ? '竖屏9:16' 
 
       } catch (error) {
         if (video._currentTaskId !== taskGuard) return;
-        const classified = classifyFetchError(error);
+        const submitUrl = getSeedanceApiUrl(video.proxyUrl, 'submit');
+        const classified = classifyFetchError(error, submitUrl);
         if (classified.type === 'cors-likely') {
           video.error = 'Cannot reach Seedance API. Configure a proxy URL in API settings, or check your connection.';
+        } else if (classified.type === 'invalid-url') {
+          video.error = classified.message;
         } else if (classified.type === 'network') {
           video.error = classified.message;
         } else {
